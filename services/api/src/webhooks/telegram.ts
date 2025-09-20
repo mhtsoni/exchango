@@ -7,6 +7,9 @@ const router = express.Router();
 // Initialize bot for webhook processing
 const bot = new Bot(process.env.BOT_TOKEN!);
 
+// Initialize the bot
+bot.init().catch(console.error);
+
 // Telegram webhook endpoint
 router.post('/telegram', async (req, res) => {
   try {
