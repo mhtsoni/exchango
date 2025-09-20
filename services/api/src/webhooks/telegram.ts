@@ -161,13 +161,14 @@ bot.command('portfolio', async (ctx) => {
       message += `No listings created yet. Use /sell to create your first one!\n\n`;
     } else {
       for (const listing of listings.slice(0, 5)) {
-        const statusEmoji = {
+        const statusEmojiMap: { [key: string]: string } = {
           'pending_approval': '⏳',
           'active': '✅',
           'sold': '💰',
           'rejected': '❌',
           'removed': '🗑️'
-        }[listing.status] || '❓';
+        };
+        const statusEmoji = statusEmojiMap[listing.status] || '❓';
         
         message += `${statusEmoji} **${listing.title}** - $${(listing.price_cents / 100).toFixed(2)}\n`;
         message += `   Status: \`${listing.status}\`\n`;
@@ -1179,13 +1180,13 @@ async function postListingToChannel(listing: any, user: any) {
     });
     
     console.log(`Posted listing ${listing.id} to channel ${channelId}, result:`, result);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error posting to channel:', error);
     
     // Log specific error details
-    if (error.description === 'Bad Request: chat not found') {
+    if (error?.description === 'Bad Request: chat not found') {
       console.error('Channel not found - please check if @Exchango channel exists and bot is added as admin');
-    } else if (error.description === 'Bad Request: chat not found') {
+    } else if (error?.description?.includes('not authorized')) {
       console.error('Bot not authorized to post to channel - please add bot as admin with post permissions');
     }
     
