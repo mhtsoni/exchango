@@ -170,8 +170,8 @@ bot.command('portfolio', async (ctx) => {
         }[listing.status] || '❓';
         
         message += `${statusEmoji} **${listing.title}** - $${(listing.price_cents / 100).toFixed(2)}\n`;
-        message += `   Status: ${listing.status}\n`;
-        message += `   Created: ${new Date(listing.created_at).toLocaleDateString()}\n\n`;
+        message += `   Status: \`${listing.status}\`\n`;
+        message += `   Created: \`${new Date(listing.created_at).toLocaleDateString()}\`\n\n`;
       }
       if (listings.length > 5) {
         message += `... and ${listings.length - 5} more listings\n\n`;
@@ -187,8 +187,8 @@ bot.command('portfolio', async (ctx) => {
         const listing = await db('listings').where('id', transaction.listing_id).first();
         if (listing) {
           message += `🔸 **${listing.title}** - $${(transaction.amount_cents / 100).toFixed(2)}\n`;
-          message += `   Status: ${transaction.status}\n`;
-          message += `   Date: ${new Date(transaction.created_at).toLocaleDateString()}\n\n`;
+          message += `   Status: \`${transaction.status}\`\n`;
+          message += `   Date: \`${new Date(transaction.created_at).toLocaleDateString()}\`\n\n`;
         }
       }
     }
@@ -1145,6 +1145,12 @@ async function postListingToChannel(listing: any, user: any) {
       return;
     }
     
+    // Validate channel ID format
+    if (!channelId.startsWith('@') && !channelId.startsWith('-')) {
+      console.log('Invalid channel ID format, skipping channel post');
+      return;
+    }
+    
     const price = (listing.price_cents / 100).toFixed(2);
     const deliveryEmojiMap: { [key: string]: string } = {
       'code': '💻',
@@ -1175,6 +1181,14 @@ async function postListingToChannel(listing: any, user: any) {
     console.log(`Posted listing ${listing.id} to channel ${channelId}, result:`, result);
   } catch (error) {
     console.error('Error posting to channel:', error);
+    
+    // Log specific error details
+    if (error.description === 'Bad Request: chat not found') {
+      console.error('Channel not found - please check if @Exchango channel exists and bot is added as admin');
+    } else if (error.description === 'Bad Request: chat not found') {
+      console.error('Bot not authorized to post to channel - please add bot as admin with post permissions');
+    }
+    
     // Don't throw error - listing creation should still succeed even if channel post fails
   }
 }
