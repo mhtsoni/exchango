@@ -1,5 +1,5 @@
 import express from 'express';
-import { Bot } from 'grammy';
+import { Bot, InlineKeyboard } from 'grammy';
 import db from '../database';
 
 // User state management for form flows
@@ -96,17 +96,26 @@ bot.command('sell', async (ctx) => {
     
     // Initialize user state for listing creation
     setUserState(userId, {
-      step: 'title',
+      step: 'category',
       listingData: {}
     });
     
+    const keyboard = new InlineKeyboard()
+      .text('📊 Trading Signals', 'category_trading_signals')
+      .text('🤖 Trading Bots', 'category_trading_bots').row()
+      .text('📚 Educational Content', 'category_education')
+      .text('🔧 Tools & Software', 'category_tools').row()
+      .text('📈 Market Analysis', 'category_analysis')
+      .text('🎯 Investment Strategies', 'category_strategies').row()
+      .text('❌ Cancel', 'cancel_sell');
+    
     await ctx.reply(
-      `💰 **Create New Listing**\n\n` +
-      `Let's create your trading opportunity step by step!\n\n` +
-      `📝 **Step 1/5: Title**\n` +
-      `What are you selling? Please provide a clear, descriptive title.\n\n` +
-      `*Example: "Python Trading Bot for Crypto Markets"*`,
-      { parse_mode: 'Markdown' }
+      `🚀 **Create Your Digital Subscription**\n\n` +
+      `Choose the category that best fits your offering:`,
+      { 
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
+      }
     );
   } catch (error) {
     console.error('Error handling /sell command:', error);
@@ -238,6 +247,173 @@ bot.command('cancel', async (ctx) => {
   );
 });
 
+// Handle callback queries for inline keyboards
+bot.on('callback_query:data', async (ctx) => {
+  try {
+    const userId = ctx.from?.id;
+    const data = ctx.callbackQuery.data;
+    
+    if (!userId) return;
+    
+    // Handle category selection
+    if (data.startsWith('category_')) {
+      const category = data.replace('category_', '').replace(/_/g, ' ');
+      const userState = getUserState(userId);
+      
+      if (userState) {
+        userState.listingData.category = category;
+        userState.step = 'pricing';
+        setUserState(userId, userState);
+        
+        const keyboard = new InlineKeyboard()
+          .text('$5/month', 'price_500')
+          .text('$10/month', 'price_1000').row()
+          .text('$25/month', 'price_2500')
+          .text('$50/month', 'price_5000').row()
+          .text('$100/month', 'price_10000')
+          .text('Custom Price', 'price_custom').row()
+          .text('❌ Back', 'back_to_category')
+          .text('❌ Cancel', 'cancel_sell');
+        
+        await ctx.editMessageText(
+          `💰 **Choose Your Subscription Price**\n\n` +
+          `Category: ${category}\n\n` +
+          `Select a price tier or choose custom:`,
+          {
+            parse_mode: 'Markdown',
+            reply_markup: keyboard
+          }
+        );
+      }
+    }
+    
+    // Handle pricing selection
+    else if (data.startsWith('price_')) {
+      const userState = getUserState(userId);
+      if (userState) {
+        if (data === 'price_custom') {
+          userState.step = 'custom_price';
+          setUserState(userId, userState);
+          
+          await ctx.editMessageText(
+            `💰 **Enter Custom Price**\n\n` +
+            `Please enter your monthly subscription price in USD:\n\n` +
+            `*Examples: 15, 75, 150*`,
+            { parse_mode: 'Markdown' }
+          );
+        } else {
+          const price = parseInt(data.replace('price_', ''));
+          userState.listingData.price_cents = price;
+          userState.step = 'delivery';
+          setUserState(userId, userState);
+          
+          const keyboard = new InlineKeyboard()
+            .text('📱 Instant Access', 'delivery_instant')
+            .text('📧 Email Delivery', 'delivery_email').row()
+            .text('🔗 Private Link', 'delivery_link')
+            .text('👤 Manual Setup', 'delivery_manual').row()
+            .text('❌ Back', 'back_to_pricing')
+            .text('❌ Cancel', 'cancel_sell');
+          
+          await ctx.editMessageText(
+            `📦 **How will you deliver your subscription?**\n\n` +
+            `Price: $${(price / 100).toFixed(2)}/month\n\n` +
+            `Choose delivery method:`,
+            {
+              parse_mode: 'Markdown',
+              reply_markup: keyboard
+            }
+          );
+        }
+      }
+    }
+    
+    // Handle delivery selection
+    else if (data.startsWith('delivery_')) {
+      const userState = getUserState(userId);
+      if (userState) {
+        const deliveryType = data.replace('delivery_', '');
+        userState.listingData.delivery_type = deliveryType;
+        userState.step = 'details';
+        setUserState(userId, userState);
+        
+        await ctx.editMessageText(
+          `📝 **Final Step: Subscription Details**\n\n` +
+          `Category: ${userState.listingData.category}\n` +
+          `Price: $${(userState.listingData.price_cents / 100).toFixed(2)}/month\n` +
+          `Delivery: ${deliveryType}\n\n` +
+          `Please provide:\n` +
+          `• **Title**: What's your subscription called?\n` +
+          `• **Description**: What do subscribers get?\n\n` +
+          `*Format: Title on first line, description on remaining lines*`,
+          { parse_mode: 'Markdown' }
+        );
+      }
+    }
+    
+    // Handle navigation
+    else if (data === 'back_to_category') {
+      const keyboard = new InlineKeyboard()
+        .text('📊 Trading Signals', 'category_trading_signals')
+        .text('🤖 Trading Bots', 'category_trading_bots').row()
+        .text('📚 Educational Content', 'category_education')
+        .text('🔧 Tools & Software', 'category_tools').row()
+        .text('📈 Market Analysis', 'category_analysis')
+        .text('🎯 Investment Strategies', 'category_strategies').row()
+        .text('❌ Cancel', 'cancel_sell');
+      
+      await ctx.editMessageText(
+        `🚀 **Create Your Digital Subscription**\n\n` +
+        `Choose the category that best fits your offering:`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: keyboard
+        }
+      );
+    }
+    
+    else if (data === 'back_to_pricing') {
+      const userState = getUserState(userId);
+      if (userState) {
+        const keyboard = new InlineKeyboard()
+          .text('$5/month', 'price_500')
+          .text('$10/month', 'price_1000').row()
+          .text('$25/month', 'price_2500')
+          .text('$50/month', 'price_5000').row()
+          .text('$100/month', 'price_10000')
+          .text('Custom Price', 'price_custom').row()
+          .text('❌ Back', 'back_to_category')
+          .text('❌ Cancel', 'cancel_sell');
+        
+        await ctx.editMessageText(
+          `💰 **Choose Your Subscription Price**\n\n` +
+          `Category: ${userState.listingData.category}\n\n` +
+          `Select a price tier or choose custom:`,
+          {
+            parse_mode: 'Markdown',
+            reply_markup: keyboard
+          }
+        );
+      }
+    }
+    
+    // Handle cancellation
+    else if (data === 'cancel_sell') {
+      clearUserState(userId);
+      await ctx.editMessageText(
+        '❌ **Cancelled**\n\n' +
+        'Subscription creation cancelled. Use /sell to start again.',
+        { parse_mode: 'Markdown' }
+      );
+    }
+    
+    await ctx.answerCallbackQuery();
+  } catch (error) {
+    console.error('Error handling callback query:', error);
+    await ctx.answerCallbackQuery('Error occurred. Please try again.');
+  }
+});
+
 // Handle form flow messages
 bot.on('message', async (ctx) => {
   try {
@@ -269,54 +445,13 @@ async function handleFormStep(ctx: any, userId: number, messageText: string, use
   const { step, listingData } = userState;
   
   switch (step) {
-    case 'title':
-      listingData.title = messageText;
-      setUserState(userId, { step: 'description', listingData });
-      await ctx.reply(
-        `✅ **Title saved!**\n\n` +
-        `📋 **Step 2/5: Description**\n` +
-        `Please provide a detailed description of what you're selling.\n\n` +
-        `*Example: "A fully automated trading bot that analyzes market trends and executes trades on your behalf..."*`,
-        { parse_mode: 'Markdown' }
-      );
-      break;
-      
-    case 'description':
-      listingData.description = messageText;
-      setUserState(userId, { step: 'category', listingData });
-      await ctx.reply(
-        `✅ **Description saved!**\n\n` +
-        `🏷️ **Step 3/5: Category**\n` +
-        `What category does this belong to? Choose from:\n\n` +
-        `• Software\n` +
-        `• Trading Strategy\n` +
-        `• Educational Content\n` +
-        `• Tools & Utilities\n` +
-        `• Other\n\n` +
-        `*Just type the category name*`,
-        { parse_mode: 'Markdown' }
-      );
-      break;
-      
-    case 'category':
-      listingData.category = messageText;
-      setUserState(userId, { step: 'price', listingData });
-      await ctx.reply(
-        `✅ **Category saved!**\n\n` +
-        `💰 **Step 4/5: Price**\n` +
-        `How much do you want to charge? Enter the amount in USD.\n\n` +
-        `*Examples: 25, 50.00, 100*`,
-        { parse_mode: 'Markdown' }
-      );
-      break;
-      
-    case 'price':
+    case 'custom_price':
       const price = parseFloat(messageText.replace(/[$,]/g, ''));
       if (isNaN(price) || price <= 0) {
         await ctx.reply(
           '❌ **Invalid price!**\n\n' +
           'Please enter a valid price in USD (numbers only).\n' +
-          '*Examples: 25, 50.00, 100*',
+          '*Examples: 15, 75, 150*',
           { parse_mode: 'Markdown' }
         );
         return;
@@ -324,31 +459,44 @@ async function handleFormStep(ctx: any, userId: number, messageText: string, use
       
       listingData.price_cents = Math.round(price * 100);
       setUserState(userId, { step: 'delivery', listingData });
+      
+      const keyboard = new InlineKeyboard()
+        .text('📱 Instant Access', 'delivery_instant')
+        .text('📧 Email Delivery', 'delivery_email').row()
+        .text('🔗 Private Link', 'delivery_link')
+        .text('👤 Manual Setup', 'delivery_manual').row()
+        .text('❌ Back', 'back_to_pricing')
+        .text('❌ Cancel', 'cancel_sell');
+      
       await ctx.reply(
-        `✅ **Price saved!**\n\n` +
-        `📦 **Step 5/5: Delivery Method**\n` +
-        `How will you deliver this to buyers? Choose one:\n\n` +
-        `• **code** - Source code files\n` +
-        `• **file** - Documents, PDFs, etc.\n` +
-        `• **manual** - Manual delivery/instructions\n\n` +
-        `*Just type: code, file, or manual*`,
-        { parse_mode: 'Markdown' }
+        `✅ **Price set to $${price.toFixed(2)}/month**\n\n` +
+        `📦 **How will you deliver your subscription?**\n\n` +
+        `Choose delivery method:`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: keyboard
+        }
       );
       break;
       
-    case 'delivery':
-      const deliveryType = messageText.toLowerCase().trim();
-      if (!['code', 'file', 'manual'].includes(deliveryType)) {
+    case 'details':
+      const lines = messageText.split('\n');
+      if (lines.length < 2) {
         await ctx.reply(
-          '❌ **Invalid delivery type!**\n\n' +
-          'Please choose one of these options:\n' +
-          '• code\n• file\n• manual',
+          '❌ **Invalid format!**\n\n' +
+          'Please provide both title and description:\n' +
+          '• Title on first line\n' +
+          '• Description on remaining lines\n\n' +
+          '*Example:*\n' +
+          'Crypto Trading Signals Pro\n' +
+          'Daily market analysis and trading signals for major cryptocurrencies...',
           { parse_mode: 'Markdown' }
         );
         return;
       }
       
-      listingData.delivery_type = deliveryType;
+      listingData.title = lines[0].trim();
+      listingData.description = lines.slice(1).join('\n').trim();
       
       // Create the listing
       await createListing(ctx, userId, listingData);
