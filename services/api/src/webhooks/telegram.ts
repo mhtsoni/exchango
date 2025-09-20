@@ -548,6 +548,8 @@ bot.on('callback_query:data', async (ctx) => {
         
         const keyboard = new InlineKeyboard()
           .text('💰 Mark as Sold', `mark_sold_${listingId}`)
+          .text('✏️ Edit Listing', `edit_${listingId}`).row()
+          .text('📷 Manage Images', `images_${listingId}`)
           .text('🗑️ Delete Listing', `delete_${listingId}`).row()
           .text('❌ Cancel', 'cancel_manage');
         
@@ -640,6 +642,153 @@ bot.on('callback_query:data', async (ctx) => {
       }
     }
     
+    // Handle edit listing action
+    else if (data.startsWith('edit_')) {
+      const listingId = data.replace('edit_', '');
+      const userId = ctx.from?.id;
+      
+      try {
+        // Verify ownership
+        const user = await db('users').where('telegram_id', userId).first();
+        const listing = await db('listings').where('id', listingId).where('seller_id', user.id).first();
+        
+        if (!listing) {
+          await ctx.answerCallbackQuery('❌ Listing not found or you do not own this listing.');
+          return;
+        }
+        
+        if (listing.status === 'sold' || listing.status === 'removed') {
+          await ctx.answerCallbackQuery('❌ Cannot edit sold or deleted listings.');
+          return;
+        }
+        
+        // Set user state for editing
+        setUserState(userId, {
+          step: 'editing',
+          listingId: listingId,
+          originalData: listing
+        });
+        
+        const message = 
+          `✏️ **Edit Listing**\n\n` +
+          `📝 **${listing.title}**\n\n` +
+          `What would you like to edit?\n\n` +
+          `Send me the new information in this format:\n` +
+          `**Title:** [new title]\n` +
+          `**Description:** [new description]\n` +
+          `**Price:** [new price in USD]\n\n` +
+          `*You can send just the fields you want to change.*`;
+        
+        const keyboard = new InlineKeyboard()
+          .text('❌ Cancel Edit', 'cancel_edit');
+        
+        await ctx.editMessageText(message, {
+          parse_mode: 'Markdown',
+          reply_markup: keyboard
+        });
+        
+      } catch (error) {
+        console.error('Error handling edit action:', error);
+        await ctx.answerCallbackQuery('❌ Error loading edit options. Please try again.');
+      }
+    }
+    
+    // Handle manage images action
+    else if (data.startsWith('images_')) {
+      const listingId = data.replace('images_', '');
+      const userId = ctx.from?.id;
+      
+      try {
+        // Verify ownership
+        const user = await db('users').where('telegram_id', userId).first();
+        const listing = await db('listings').where('id', listingId).where('seller_id', user.id).first();
+        
+        if (!listing) {
+          await ctx.answerCallbackQuery('❌ Listing not found or you do not own this listing.');
+          return;
+        }
+        
+        const hasImage = listing.proof_telegram_file_path ? '✅ Has image' : '❌ No image';
+        
+        const message = 
+          `📷 **Manage Images**\n\n` +
+          `📝 **${listing.title}**\n\n` +
+          `Current status: ${hasImage}\n\n` +
+          `You can:\n` +
+          `• Send a photo to add/update image\n` +
+          `• Use buttons below to manage existing image`;
+        
+        const keyboard = new InlineKeyboard();
+        
+        if (listing.proof_telegram_file_path) {
+          keyboard.text('🗑️ Remove Image', `remove_image_${listingId}`).row();
+        }
+        
+        keyboard.text('❌ Back to Management', `manage_${listingId}`);
+        
+        await ctx.editMessageText(message, {
+          parse_mode: 'Markdown',
+          reply_markup: keyboard
+        });
+        
+        // Set user state for image management
+        setUserState(userId, {
+          step: 'managing_images',
+          listingId: listingId
+        });
+        
+      } catch (error) {
+        console.error('Error handling images action:', error);
+        await ctx.answerCallbackQuery('❌ Error loading image options. Please try again.');
+      }
+    }
+    
+    // Handle remove image action
+    else if (data.startsWith('remove_image_')) {
+      const listingId = data.replace('remove_image_', '');
+      const userId = ctx.from?.id;
+      
+      try {
+        // Verify ownership and remove image
+        const user = await db('users').where('telegram_id', userId).first();
+        const listing = await db('listings').where('id', listingId).where('seller_id', user.id).first();
+        
+        if (!listing) {
+          await ctx.answerCallbackQuery('❌ Listing not found or you do not own this listing.');
+          return;
+        }
+        
+        await db('listings').where('id', listingId).update({ 
+          proof_telegram_file_path: null,
+          updated_at: new Date()
+        });
+        
+        await ctx.editMessageText(
+          `🗑️ **Image Removed!**\n\n` +
+          `📝 **${listing.title}**\n\n` +
+          `The image has been removed from your listing.\n\n` +
+          `Use /portfolio to manage your listings again.`,
+          { parse_mode: 'Markdown' }
+        );
+        
+        await ctx.answerCallbackQuery('✅ Image removed!');
+        
+      } catch (error) {
+        console.error('Error removing image:', error);
+        await ctx.answerCallbackQuery('❌ Error removing image. Please try again.');
+      }
+    }
+    
+    // Handle cancel edit action
+    else if (data === 'cancel_edit') {
+      clearUserState(ctx.from?.id || 0);
+      await ctx.editMessageText(
+        '❌ **Edit Cancelled**\n\n' +
+        'Listing editing cancelled. Use /portfolio to manage your listings again.',
+        { parse_mode: 'Markdown' }
+      );
+    }
+    
     // Handle cancel manage action
     else if (data === 'cancel_manage') {
       await ctx.editMessageText(
@@ -661,21 +810,36 @@ bot.on('message', async (ctx) => {
   try {
     const userId = ctx.from?.id;
     const messageText = ctx.message?.text;
+    const photo = ctx.message?.photo;
     
-    if (!userId || !messageText) return;
+    if (!userId) return;
     
     const userState = getUserState(userId);
     
+    // Handle photo uploads for image management
+    if (photo && userState && userState.step === 'managing_images') {
+      await handlePhotoUpload(ctx, userId, userState);
+      return;
+    }
+    
     // If user is in a form flow, handle the current step
-    if (userState && userState.step) {
+    if (userState && userState.step && messageText) {
       await handleFormStep(ctx, userId, messageText, userState);
       return;
     }
     
+    // Handle editing mode
+    if (userState && userState.step === 'editing' && messageText) {
+      await handleEditMode(ctx, userId, messageText, userState);
+      return;
+    }
+    
     // Default message for users not in a form flow
-    await ctx.reply(
-      'Hi! I\'m the Exchango trading bot. Use /start to begin or /help for available commands.'
-    );
+    if (messageText) {
+      await ctx.reply(
+        'Hi! I\'m the Exchango trading bot. Use /start to begin or /help for available commands.'
+      );
+    }
   } catch (error) {
     console.error('Error handling message:', error);
     await ctx.reply('Sorry, there was an error. Please try again.');
@@ -748,6 +912,128 @@ async function handleFormStep(ctx: any, userId: number, messageText: string, use
     default:
       clearUserState(userId);
       await ctx.reply('Something went wrong. Please start over with /sell');
+  }
+}
+
+// Handle photo upload for image management
+async function handlePhotoUpload(ctx: any, userId: number, userState: any) {
+  try {
+    const { listingId } = userState;
+    const photo = ctx.message?.photo;
+    
+    if (!photo || photo.length === 0) {
+      await ctx.reply('❌ No photo received. Please try again.');
+      return;
+    }
+    
+    // Get the highest quality photo
+    const largestPhoto = photo[photo.length - 1];
+    const fileId = largestPhoto.file_id;
+    
+    // Verify ownership
+    const user = await db('users').where('telegram_id', userId).first();
+    const listing = await db('listings').where('id', listingId).where('seller_id', user.id).first();
+    
+    if (!listing) {
+      await ctx.reply('❌ Listing not found or you do not own this listing.');
+      clearUserState(userId);
+      return;
+    }
+    
+    // Update listing with new image
+    await db('listings').where('id', listingId).update({ 
+      proof_telegram_file_path: fileId,
+      updated_at: new Date()
+    });
+    
+    await ctx.reply(
+      `📷 **Image Updated!**\n\n` +
+      `📝 **${listing.title}**\n\n` +
+      `Your listing image has been updated successfully!\n\n` +
+      `Use /portfolio to manage your listings again.`,
+      { parse_mode: 'Markdown' }
+    );
+    
+    clearUserState(userId);
+    
+  } catch (error) {
+    console.error('Error handling photo upload:', error);
+    await ctx.reply('❌ Error updating image. Please try again.');
+    clearUserState(userId);
+  }
+}
+
+// Handle editing mode
+async function handleEditMode(ctx: any, userId: number, messageText: string, userState: any) {
+  try {
+    const { listingId, originalData } = userState;
+    
+    // Parse the edit message
+    const updates: any = {};
+    
+    // Parse title
+    const titleMatch = messageText.match(/\*\*Title:\*\*\s*(.+)/i);
+    if (titleMatch) {
+      updates.title = titleMatch[1].trim();
+    }
+    
+    // Parse description
+    const descMatch = messageText.match(/\*\*Description:\*\*\s*([\s\S]+?)(?=\*\*|$)/i);
+    if (descMatch) {
+      updates.description = descMatch[1].trim();
+    }
+    
+    // Parse price
+    const priceMatch = messageText.match(/\*\*Price:\*\*\s*\$?(\d+(?:\.\d+)?)/i);
+    if (priceMatch) {
+      const price = parseFloat(priceMatch[1]);
+      if (!isNaN(price) && price > 0) {
+        updates.price_cents = Math.round(price * 100);
+      }
+    }
+    
+    // Check if any updates were provided
+    if (Object.keys(updates).length === 0) {
+      await ctx.reply(
+        '❌ **No valid updates found!**\n\n' +
+        'Please use this format:\n' +
+        '**Title:** [new title]\n' +
+        '**Description:** [new description]\n' +
+        '**Price:** [new price in USD]\n\n' +
+        '*You can send just the fields you want to change.*',
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+    
+    // Add timestamp
+    updates.updated_at = new Date();
+    
+    // Update the listing
+    await db('listings').where('id', listingId).update(updates);
+    
+    // Get updated listing
+    const updatedListing = await db('listings').where('id', listingId).first();
+    
+    let updateMessage = `✅ **Listing Updated!**\n\n`;
+    updateMessage += `📝 **${updatedListing.title}**\n`;
+    updateMessage += `💰 **Price:** $${(updatedListing.price_cents / 100).toFixed(2)}\n`;
+    updateMessage += `📊 **Status:** ${updatedListing.status}\n\n`;
+    
+    if (updates.title) updateMessage += `✅ Title updated\n`;
+    if (updates.description) updateMessage += `✅ Description updated\n`;
+    if (updates.price_cents) updateMessage += `✅ Price updated\n`;
+    
+    updateMessage += `\nUse /portfolio to manage your listings again.`;
+    
+    await ctx.reply(updateMessage, { parse_mode: 'Markdown' });
+    
+    clearUserState(userId);
+    
+  } catch (error) {
+    console.error('Error handling edit mode:', error);
+    await ctx.reply('❌ Error updating listing. Please try again.');
+    clearUserState(userId);
   }
 }
 
