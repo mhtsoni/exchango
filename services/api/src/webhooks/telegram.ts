@@ -1170,7 +1170,7 @@ async function postListingToChannel(listing: any, user: any) {
       `👤 **Seller:** ${user.display_name || user.username || 'Anonymous'}\n` +
       `📅 **Posted:** ${new Date(listing.created_at).toLocaleDateString()}\n\n` +
       `🔄 **Status:** Active\n\n` +
-      `💬 **Interested?** Contact the seller: @${user.username || 'Anonymous'}\n` +
+      `💬 **Interested?** Contact the seller: ${user.username ? `@${user.username}` : (user.display_name || 'Anonymous')}\n` +
       `📊 **View All Listings:** @${process.env.BOT_USERNAME || 'your_bot'}\n\n` +
       `#Exchango #Trading #${listing.category.replace(/\s+/g, '')}`;
     
