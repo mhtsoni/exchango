@@ -21,8 +21,11 @@ function clearUserState(userId: number) {
 // Helper function to get approver user IDs
 function getApproverUserIds(): number[] {
   const approverIds = process.env.APPROVER_USER_IDS;
+  console.log(`Raw APPROVER_USER_IDS: ${approverIds}`);
   if (!approverIds) return [];
-  return approverIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+  const parsedIds = approverIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+  console.log(`Parsed approver IDs: ${parsedIds}`);
+  return parsedIds;
 }
 
 const router = express.Router();
@@ -440,6 +443,7 @@ bot.on('callback_query:data', async (ctx) => {
         
         if (isApproved) {
           // Post to channel
+          console.log(`Approving listing ${listingId}, posting to channel...`);
           await postListingToChannel(listing, seller);
           
           // Notify seller of approval
@@ -639,6 +643,7 @@ async function createListing(ctx: any, userId: number, listingData: any) {
 async function sendApprovalRequest(listing: any, user: any) {
   try {
     const approverIds = getApproverUserIds();
+    console.log(`Sending approval request for listing ${listing.id} to approvers:`, approverIds);
     if (approverIds.length === 0) {
       console.log('No approver user IDs configured, skipping approval request');
       return;
@@ -690,6 +695,7 @@ async function sendApprovalRequest(listing: any, user: any) {
 async function postListingToChannel(listing: any, user: any) {
   try {
     const channelId = process.env.CHANNEL_ID;
+    console.log(`Attempting to post listing ${listing.id} to channel: ${channelId}`);
     if (!channelId) {
       console.log('CHANNEL_ID not set, skipping channel post');
       return;
