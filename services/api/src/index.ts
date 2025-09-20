@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import listingsRouter from './routes/listings';
 import transactionsRouter from './routes/transactions';
 import adminRouter from './routes/admin';
+import telegramWebhookRouter from './webhooks/telegram';
 import { initializeDatabase } from './database';
 
 const app = express();
@@ -29,6 +30,7 @@ app.use(bodyParser.json({ limit: '1mb' }));
 app.use('/api/listings', listingsRouter);
 app.use('/api/transactions', transactionsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/webhooks', telegramWebhookRouter);
 
 // Health check
 app.get('/health', (req, res) => {
