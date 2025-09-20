@@ -12,6 +12,7 @@ import { initializeDatabase } from './database';
 
 const app = express();
 
+// Trigger Railway deployment
 // Security middleware
 app.use(helmet());
 app.use(cors());
