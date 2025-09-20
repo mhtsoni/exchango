@@ -57,22 +57,50 @@ NODE_ENV=production
 
 ### Step 5: Configure Railway Service Settings
 
-1. **In your service settings**, configure:
+You need to configure **both** the `exchango-api` and `exchango-bot` services separately.
+
+#### 5A: Configure API Service
+
+1. **Click on** `exchango-api` service in your Railway dashboard
+2. **Go to** "Settings" tab
+3. **In the "Build" section**, set:
    - **Build Command**: `pnpm install && pnpm build`
+4. **In the "Deploy" section**, set:
    - **Start Command**: `pnpm --filter api start`
    - **Root Directory**: `/` (leave empty)
 
-### Step 6: Deploy Bot Service
+#### 5B: Configure Bot Service
 
-1. **Add another service** for the bot:
-   - **Click** "New" → "GitHub Repo"
-   - **Select** the same `exchango` repository
-   - **Configure**:
-     - **Build Command**: `pnpm install && pnpm build`
-     - **Start Command**: `pnpm --filter bot start`
-     - **Root Directory**: `/` (leave empty)
+1. **Click on** `exchango-bot` service in your Railway dashboard
+2. **Go to** "Settings" tab
+3. **In the "Build" section**, set:
+   - **Build Command**: `pnpm install && pnpm build`
+4. **In the "Deploy" section**, set:
+   - **Start Command**: `pnpm --filter bot start`
+   - **Root Directory**: `/` (leave empty)
 
-2. **Set environment variables** for bot service (same as above)
+### Step 6: Set Environment Variables
+
+**For BOTH services** (`exchango-api` and `exchango-bot`):
+
+1. **Click on** each service
+2. **Go to** "Variables" tab
+3. **Add** the same environment variables to both services:
+
+```env
+# Telegram Configuration
+BOT_TOKEN=your-telegram-bot-token-here
+WEBHOOK_URL=https://your-app-name.railway.app/webhooks/telegram
+ADMIN_TELEGRAM_ID=your-telegram-user-id
+
+# Database (Railway will auto-populate this)
+DATABASE_URL=postgresql://postgres:password@host:port/railway
+
+# App Configuration
+PLATFORM_BASE_URL=https://your-app-name.railway.app
+PORT=4000
+NODE_ENV=production
+```
 
 ### Step 7: Run Database Migrations
 
