@@ -161,7 +161,15 @@ bot.command('portfolio', async (ctx) => {
       message += `No listings created yet. Use /sell to create your first one!\n\n`;
     } else {
       for (const listing of listings.slice(0, 5)) {
-        message += `🔸 **${listing.title}** - $${(listing.price_cents / 100).toFixed(2)}\n`;
+        const statusEmoji = {
+          'pending_approval': '⏳',
+          'active': '✅',
+          'sold': '💰',
+          'rejected': '❌',
+          'removed': '🗑️'
+        }[listing.status] || '❓';
+        
+        message += `${statusEmoji} **${listing.title}** - $${(listing.price_cents / 100).toFixed(2)}\n`;
         message += `   Status: ${listing.status}\n`;
         message += `   Created: ${new Date(listing.created_at).toLocaleDateString()}\n\n`;
       }
@@ -173,7 +181,7 @@ bot.command('portfolio', async (ctx) => {
     // Purchases
     message += `🛒 **Your Purchases (${boughtTransactions.length}):**\n`;
     if (boughtTransactions.length === 0) {
-      message += `No purchases yet. Use /listings to find opportunities!\n`;
+      message += `No purchases yet. Use /listings to find opportunities!\n\n`;
     } else {
       for (const transaction of boughtTransactions.slice(0, 3)) {
         const listing = await db('listings').where('id', transaction.listing_id).first();
@@ -185,7 +193,24 @@ bot.command('portfolio', async (ctx) => {
       }
     }
     
-    await ctx.reply(message, { parse_mode: 'Markdown' });
+    // Add management options for active listings
+    const activeListings = listings.filter(l => l.status === 'active');
+    if (activeListings.length > 0) {
+      message += `🔧 **Manage Your Active Listings:**\n`;
+      message += `Use the buttons below to manage your listings.\n\n`;
+      
+      const keyboard = new InlineKeyboard();
+      for (const listing of activeListings.slice(0, 3)) {
+        keyboard.text(`📝 ${listing.title.substring(0, 20)}...`, `manage_${listing.id}`).row();
+      }
+      
+      await ctx.reply(message, { 
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
+      });
+    } else {
+      await ctx.reply(message, { parse_mode: 'Markdown' });
+    }
   } catch (error) {
     console.error('Error handling /portfolio command:', error);
     await ctx.reply('Sorry, there was an error fetching your portfolio. Please try again later.');
@@ -493,6 +518,137 @@ bot.on('callback_query:data', async (ctx) => {
       }
     }
     
+    // Handle listing management actions
+    else if (data.startsWith('manage_')) {
+      const listingId = data.replace('manage_', '');
+      const userId = ctx.from?.id;
+      
+      try {
+        // Verify the user owns this listing
+        const user = await db('users').where('telegram_id', userId).first();
+        const listing = await db('listings').where('id', listingId).where('seller_id', user.id).first();
+        
+        if (!listing) {
+          await ctx.answerCallbackQuery('❌ Listing not found or you do not own this listing.');
+          return;
+        }
+        
+        if (listing.status !== 'active') {
+          await ctx.answerCallbackQuery('❌ Only active listings can be managed.');
+          return;
+        }
+        
+        // Show management options
+        const message = 
+          `🔧 **Manage Listing**\n\n` +
+          `📝 **${listing.title}**\n` +
+          `💰 **Price:** $${(listing.price_cents / 100).toFixed(2)}\n` +
+          `📊 **Status:** ${listing.status}\n\n` +
+          `Choose an action:`;
+        
+        const keyboard = new InlineKeyboard()
+          .text('💰 Mark as Sold', `mark_sold_${listingId}`)
+          .text('🗑️ Delete Listing', `delete_${listingId}`).row()
+          .text('❌ Cancel', 'cancel_manage');
+        
+        await ctx.editMessageText(message, {
+          parse_mode: 'Markdown',
+          reply_markup: keyboard
+        });
+        
+      } catch (error) {
+        console.error('Error handling manage action:', error);
+        await ctx.answerCallbackQuery('❌ Error loading listing management. Please try again.');
+      }
+    }
+    
+    // Handle mark as sold action
+    else if (data.startsWith('mark_sold_')) {
+      const listingId = data.replace('mark_sold_', '');
+      const userId = ctx.from?.id;
+      
+      try {
+        // Verify ownership and update status
+        const user = await db('users').where('telegram_id', userId).first();
+        const listing = await db('listings').where('id', listingId).where('seller_id', user.id).first();
+        
+        if (!listing) {
+          await ctx.answerCallbackQuery('❌ Listing not found or you do not own this listing.');
+          return;
+        }
+        
+        // Update listing status to sold
+        await db('listings').where('id', listingId).update({ 
+          status: 'sold',
+          updated_at: new Date()
+        });
+        
+        // TODO: Remove from channel (we'll need to track channel message IDs)
+        
+        await ctx.editMessageText(
+          `💰 **Listing Marked as Sold!**\n\n` +
+          `📝 **${listing.title}**\n\n` +
+          `Your listing has been marked as sold and removed from the trading channel.\n\n` +
+          `Use /portfolio to view your updated listings.`,
+          { parse_mode: 'Markdown' }
+        );
+        
+        await ctx.answerCallbackQuery('✅ Listing marked as sold!');
+        
+      } catch (error) {
+        console.error('Error marking listing as sold:', error);
+        await ctx.answerCallbackQuery('❌ Error updating listing. Please try again.');
+      }
+    }
+    
+    // Handle delete listing action
+    else if (data.startsWith('delete_')) {
+      const listingId = data.replace('delete_', '');
+      const userId = ctx.from?.id;
+      
+      try {
+        // Verify ownership and update status
+        const user = await db('users').where('telegram_id', userId).first();
+        const listing = await db('listings').where('id', listingId).where('seller_id', user.id).first();
+        
+        if (!listing) {
+          await ctx.answerCallbackQuery('❌ Listing not found or you do not own this listing.');
+          return;
+        }
+        
+        // Update listing status to removed
+        await db('listings').where('id', listingId).update({ 
+          status: 'removed',
+          updated_at: new Date()
+        });
+        
+        // TODO: Remove from channel (we'll need to track channel message IDs)
+        
+        await ctx.editMessageText(
+          `🗑️ **Listing Deleted!**\n\n` +
+          `📝 **${listing.title}**\n\n` +
+          `Your listing has been deleted and removed from the trading channel.\n\n` +
+          `Use /portfolio to view your updated listings.`,
+          { parse_mode: 'Markdown' }
+        );
+        
+        await ctx.answerCallbackQuery('✅ Listing deleted!');
+        
+      } catch (error) {
+        console.error('Error deleting listing:', error);
+        await ctx.answerCallbackQuery('❌ Error deleting listing. Please try again.');
+      }
+    }
+    
+    // Handle cancel manage action
+    else if (data === 'cancel_manage') {
+      await ctx.editMessageText(
+        '❌ **Cancelled**\n\n' +
+        'Listing management cancelled. Use /portfolio to view your listings again.',
+        { parse_mode: 'Markdown' }
+      );
+    }
+    
     await ctx.answerCallbackQuery();
   } catch (error) {
     console.error('Error handling callback query:', error);
@@ -720,8 +876,8 @@ async function postListingToChannel(listing: any, user: any) {
       `${deliveryEmoji} **Delivery:** ${listing.delivery_type}\n\n` +
       `👤 **Seller:** ${user.display_name || user.username || 'Anonymous'}\n` +
       `📅 **Posted:** ${new Date(listing.created_at).toLocaleDateString()}\n\n` +
-      `🔄 **Status:** Pending Verification\n\n` +
-      `💬 **Interested?** Contact the seller directly!\n` +
+      `🔄 **Status:** Active\n\n` +
+      `💬 **Interested?** Contact the seller: @${user.username || 'Anonymous'}\n` +
       `📊 **View All Listings:** @${process.env.BOT_USERNAME || 'your_bot'}\n\n` +
       `#Exchango #Trading #${listing.category.replace(/\s+/g, '')}`;
     
