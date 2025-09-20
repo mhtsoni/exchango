@@ -26,6 +26,8 @@ RUN cd services/api && npm run build
 RUN mkdir -p /app/services/api/dist/infra/migrations
 RUN cp /app/infra/migrations/*.js /app/services/api/dist/infra/migrations/
 RUN cp /app/services/api/knexfile.js /app/services/api/dist/services/api/
+# Remove any TypeScript migration files to prevent conflicts
+RUN rm -f /app/services/api/dist/infra/migrations/*.ts
 RUN ls -la /app/services/api/dist/infra/migrations/
 RUN ls -la /app/services/api/dist/services/api/knexfile.js
 
