@@ -3,7 +3,8 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copy package files
-COPY package.json pnpm-lock.yaml ./
+COPY package.json ./
+COPY pnpm-lock.yaml ./
 COPY services/bot/package.json ./services/bot/
 COPY services/api/package.json ./services/api/
 
