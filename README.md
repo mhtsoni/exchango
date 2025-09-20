@@ -1,15 +1,15 @@
-# SubSwap Telegram MVP
+# Exchango Telegram MVP
 
-A Telegram-first marketplace for buying and selling transferable digital subscriptions and event tickets. Built with Node.js, TypeScript, grammY, Express, PostgreSQL, Stripe Connect, and AWS services.
+A Telegram-first discovery marketplace for digital subscriptions and event tickets. Users can post listings, browse items, and communicate directly with sellers. Built with Node.js, TypeScript, grammY, Express, PostgreSQL, and Telegram's built-in file storage.
 
 ## 🚀 Features
 
 - **Telegram Bot Interface**: Complete marketplace experience within Telegram
-- **Secure Payments**: Stripe Connect integration with escrow system
-- **Encrypted Storage**: AWS KMS encryption for sensitive data
+- **Direct Communication**: Buyers and sellers communicate directly via Telegram
+- **Telegram File Storage**: Uses Telegram's built-in file system for proof documents
 - **Admin Moderation**: Telegram-based admin commands for listing verification
-- **Dispute Resolution**: Built-in dispute handling system
-- **File Storage**: AWS S3 integration for proof documents
+- **Simple Discovery**: Browse, contact, and mark items as sold
+- **No External Dependencies**: No AWS, Stripe, or complex integrations required
 
 ## 🏗️ Architecture
 
@@ -17,12 +17,12 @@ A Telegram-first marketplace for buying and selling transferable digital subscri
 exchango/
 ├─ services/
 │  ├─ bot/                       # grammY Telegram bot
-│  └─ api/                       # Express backend (API + webhooks + admin)
+│  └─ api/                       # Express backend (API + admin)
 ├─ infra/
 │  ├─ docker/                    # Dockerfile & docker-compose
 │  └─ migrations/                # Knex migrations (Postgres)
 ├─ tooling/
-│  ├─ scripts/                   # helpers (seed, ngrok)
+│  ├─ scripts/                   # helpers (setup, ngrok)
 ├─ README.md
 ├─ env.example
 └─ package.json
@@ -33,8 +33,7 @@ exchango/
 - **Backend**: Node.js 20+, TypeScript, Express
 - **Bot**: grammY (Telegram Bot API)
 - **Database**: PostgreSQL with Knex migrations
-- **Payments**: Stripe Connect
-- **Storage**: AWS S3, AWS KMS
+- **File Storage**: Telegram's built-in file system
 - **DevOps**: Docker, Docker Compose
 
 ## 📋 Prerequisites
@@ -43,8 +42,6 @@ exchango/
 - pnpm
 - Docker & Docker Compose
 - PostgreSQL
-- AWS Account (S3, KMS)
-- Stripe Account
 - Telegram Bot Token
 
 ## 🚀 Quick Start
@@ -52,8 +49,8 @@ exchango/
 ### 1. Clone and Setup
 
 ```bash
-git clone <repository-url>
-cd subswap-telegram-mvp
+git clone https://github.com/mhtsoni/exchango.git
+cd exchango
 ./tooling/scripts/setup.sh
 ```
 
@@ -75,18 +72,6 @@ ADMIN_TELEGRAM_ID=your-telegram-id
 
 # Database
 DATABASE_URL=postgres://exchango:exchango@localhost:5432/exchango
-
-# AWS
-AWS_ACCESS_KEY_ID=your-aws-access-key
-AWS_SECRET_ACCESS_KEY=your-aws-secret-key
-S3_BUCKET=your-s3-bucket
-AWS_REGION=us-east-1
-KMS_KEY_ID=your-kms-key-id
-
-# Stripe
-STRIPE_SECRET=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_PLATFORM_ACCOUNT_ID=acct_...
 
 # App
 PLATFORM_BASE_URL=https://yourdomain.com
@@ -124,11 +109,12 @@ Copy the HTTPS URL and update:
 - `/start` - Welcome message and instructions
 - `/sell` - Create a new listing
 - `/browse` - Browse active listings
+- `/mylistings` - View your own listings
+- `/help` - Show help message
 
 ### Admin Commands
 - `/pending` - View pending listings
 - `/verify <listingId> <approve|reject>` - Approve or reject listings
-- `/refund <transactionId> <reason>` - Process refunds
 
 ## 🔧 API Endpoints
 
@@ -137,44 +123,29 @@ Copy the HTTPS URL and update:
 - `GET /api/listings` - Get listings (with filters)
 - `GET /api/listings/:id` - Get single listing
 
-### Transactions
-- `POST /api/transactions` - Create transaction
-- `POST /api/transactions/:id/confirm` - Confirm delivery
-- `POST /api/transactions/:id/dispute` - Open dispute
+### Transactions (Simplified)
+- `POST /api/transactions/:id/sold` - Mark listing as sold
+- `GET /api/transactions/:id/contact` - Get seller contact info
 
 ### Admin
 - `GET /api/admin/listings/pending` - Get pending listings
 - `POST /api/admin/listings/:id/verify` - Verify listing
-- `POST /api/admin/transactions/:id/refund` - Process refund
-
-### Webhooks
-- `POST /webhooks/stripe` - Stripe webhook handler
 
 ## 🔐 Security Features
 
-- **Encryption**: All sensitive codes encrypted with AWS KMS
 - **Rate Limiting**: API endpoints protected with rate limits
-- **Webhook Verification**: Stripe webhook signature verification
 - **Input Validation**: All inputs validated and sanitized
 - **Secure Headers**: Helmet.js security headers
+- **Telegram File Access**: Files accessible only via Telegram API
 
-## 🏦 Payment Flow
+## 🏦 User Flow
 
-1. **Buyer** clicks "Buy" on a listing
-2. **System** creates Stripe Checkout Session
-3. **Buyer** completes payment
-4. **Stripe** sends webhook to confirm payment
-5. **System** holds funds in escrow
-6. **Seller** delivers item
-7. **Buyer** confirms delivery
-8. **System** releases funds to seller (minus platform fee)
-
-## 🛡️ Dispute Resolution
-
-1. **User** opens dispute via bot command
-2. **Admin** reviews dispute via admin commands
-3. **Admin** resolves dispute (refund buyer or release funds)
-4. **System** processes resolution automatically
+1. **Seller** creates listing with `/sell`
+2. **Admin** approves listing via `/verify`
+3. **Buyer** browses with `/browse`
+4. **Buyer** clicks "Contact Seller" to get seller's Telegram info
+5. **Buyer** contacts seller directly via Telegram
+6. **Seller** marks item as sold with "Mark as Sold" button
 
 ## 🐳 Docker Deployment
 
@@ -186,8 +157,8 @@ docker-compose -f infra/docker/docker-compose.yml up
 ### Production
 ```bash
 # Build images
-docker build -f infra/docker/Dockerfile.api -t subswap-api .
-docker build -f infra/docker/Dockerfile.bot -t subswap-bot .
+docker build -f infra/docker/Dockerfile.api -t exchango-api .
+docker build -f infra/docker/Dockerfile.bot -t exchango-bot .
 
 # Run with production environment
 docker-compose -f infra/docker/docker-compose.yml -f docker-compose.prod.yml up
@@ -211,27 +182,16 @@ pnpm migrate:rollback
 ### Users
 - Telegram ID, username, display name
 - KYC status, rating
-- Stripe account ID (for sellers)
 
 ### Listings
 - Title, description, price
 - Delivery type (code/file/manual)
-- Encrypted code storage
+- Telegram file path for proof
 - Verification status
 
-### Transactions
-- Buyer/seller references
-- Payment status, escrow status
-- Stripe session ID
-
-### Deliveries
-- Transaction reference
-- Encrypted delivery data
-- Timestamp
-
-### Disputes
-- Transaction reference
-- Opener, status, resolution
+### Transactions (Simplified)
+- Listing reference
+- Sold status
 
 ## 🔧 Development Scripts
 
@@ -256,9 +216,8 @@ pnpm start            # Start production servers
 
 1. **Bot not responding**: Check BOT_TOKEN and webhook URL
 2. **Database connection failed**: Ensure PostgreSQL is running
-3. **Stripe webhook failed**: Verify webhook secret and URL
-4. **S3 upload failed**: Check AWS credentials and bucket permissions
-5. **KMS encryption failed**: Verify KMS key ID and permissions
+3. **File upload failed**: Check Telegram bot permissions
+4. **Webhook not working**: Verify webhook URL is accessible
 
 ### Logs
 
@@ -278,13 +237,13 @@ docker-compose logs -f postgres
 - **Health Check**: `GET /health`
 - **Structured Logging**: JSON format logs
 - **Error Tracking**: Console error logging
-- **Metrics**: Transaction counts, dispute rates
+- **Metrics**: Transaction counts, listing stats
 
 ## 🔄 Background Jobs
 
-- **Auto-release**: Release escrow after X days if no dispute
-- **Notifications**: Remind sellers to deliver items
-- **Cleanup**: Remove expired listings
+- **Auto-cleanup**: Remove expired listings
+- **Notifications**: Remind sellers to update listings
+- **Cleanup**: Remove old file references
 
 ## 📝 License
 
@@ -304,4 +263,4 @@ For support, please open an issue or contact the development team.
 
 ---
 
-**Note**: This is an MVP implementation. For production use, consider additional security measures, monitoring, and scalability improvements.
+**Note**: This is a simplified discovery app focused on connecting buyers and sellers. No payment processing or complex integrations required.

@@ -10,8 +10,6 @@ Before deploying, make sure you have:
 
 - ✅ GitHub repository: https://github.com/mhtsoni/exchango
 - ✅ Telegram Bot Token (from @BotFather)
-- ✅ Stripe Account (for payments)
-- ✅ AWS Account (for S3 and KMS)
 - ✅ Railway Account (free at [railway.app](https://railway.app))
 
 ## 🎯 Step-by-Step Railway Deployment
@@ -43,27 +41,15 @@ Before deploying, make sure you have:
 3. **Add** the following environment variables:
 
 ```env
-# Telegram Configuration
+# Telegram Configuration (Required)
 BOT_TOKEN=your-telegram-bot-token-here
 WEBHOOK_URL=https://your-app-name.railway.app/webhooks/telegram
 ADMIN_TELEGRAM_ID=your-telegram-user-id
 
-# Database (Railway will auto-populate this)
+# Database (Required - Railway will auto-populate this when you add PostgreSQL)
 DATABASE_URL=postgresql://postgres:password@host:port/railway
 
-# AWS Configuration
-AWS_ACCESS_KEY_ID=your-aws-access-key
-AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
-S3_BUCKET=your-s3-bucket-name
-AWS_REGION=us-east-1
-KMS_KEY_ID=your-kms-key-id
-
-# Stripe Configuration
-STRIPE_SECRET=sk_live_your-stripe-secret-key
-STRIPE_WEBHOOK_SECRET=whsec_your-webhook-secret
-STRIPE_PLATFORM_ACCOUNT_ID=acct_your-stripe-account-id
-
-# App Configuration
+# App Configuration (Required)
 PLATFORM_BASE_URL=https://your-app-name.railway.app
 PORT=4000
 NODE_ENV=production
@@ -115,16 +101,6 @@ NODE_ENV=production
         -H "Content-Type: application/json" \
         -d '{"url": "https://your-app-name.railway.app/webhooks/telegram"}'
    ```
-
-### Step 9: Configure Stripe Webhook
-
-1. **Go to** Stripe Dashboard → Webhooks
-2. **Add endpoint**: `https://your-app-name.railway.app/webhooks/stripe`
-3. **Select events**:
-   - `checkout.session.completed`
-   - `payment_intent.succeeded`
-   - `payment_intent.payment_failed`
-4. **Copy webhook secret** and add to Railway environment variables
 
 ## 🔧 Railway-Specific Configuration
 
@@ -265,14 +241,6 @@ railway logs --service bot
    railway logs --service bot
    ```
 
-4. **Stripe Webhook Issues**
-   ```bash
-   # Check webhook endpoint
-   curl -X POST https://your-app.railway.app/webhooks/stripe \
-        -H "Content-Type: application/json" \
-        -d '{"test": "data"}'
-   ```
-
 ### Debug Commands
 
 ```bash
@@ -312,7 +280,6 @@ railway status
 - [ ] Both API and Bot services deployed
 - [ ] Database migrations run
 - [ ] Telegram webhook set
-- [ ] Stripe webhook configured
 - [ ] Domain configured (optional)
 - [ ] Monitoring set up
 - [ ] Backup strategy in place
@@ -340,3 +307,4 @@ railway status
 
 **Estimated deployment time**: 10-15 minutes
 **Cost**: Free tier sufficient for MVP testing
+**Dependencies**: Only Telegram bot token and PostgreSQL database

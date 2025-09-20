@@ -7,8 +7,6 @@
 - pnpm
 - Docker & Docker Compose
 - PostgreSQL
-- AWS Account (S3, KMS)
-- Stripe Account
 - Telegram Bot Token
 
 ### Quick Start
@@ -51,29 +49,18 @@
 Required configuration in `.env`:
 
 ```env
-# Telegram
+# Telegram (Required)
 BOT_TOKEN=your-telegram-bot-token
 WEBHOOK_URL=https://yourdomain.com/telegram/webhook
 ADMIN_TELEGRAM_ID=your-telegram-id
 
-# Database
+# Database (Required)
 DATABASE_URL=postgres://exchango:exchango@localhost:5432/exchango
 
-# AWS
-AWS_ACCESS_KEY_ID=your-aws-access-key
-AWS_SECRET_ACCESS_KEY=your-aws-secret-key
-S3_BUCKET=your-s3-bucket
-AWS_REGION=us-east-1
-KMS_KEY_ID=your-kms-key-id
-
-# Stripe
-STRIPE_SECRET=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_PLATFORM_ACCOUNT_ID=acct_...
-
-# App
+# App (Required)
 PLATFORM_BASE_URL=https://yourdomain.com
 PORT=4000
+NODE_ENV=development
 ```
 
 ### Bot Commands
@@ -82,18 +69,19 @@ PORT=4000
 - `/start` - Welcome message
 - `/sell` - Create listing
 - `/browse` - Browse listings
+- `/mylistings` - View your listings
+- `/help` - Show help
 
 **Admin Commands:**
 - `/pending` - View pending listings
 - `/verify <id> <approve|reject>` - Verify listings
-- `/refund <id> <reason>` - Process refunds
 
 ### API Endpoints
 
 - `POST /api/listings` - Create listing
 - `GET /api/listings` - Get listings
-- `POST /api/transactions` - Create transaction
-- `POST /webhooks/stripe` - Stripe webhook
+- `POST /api/transactions/:id/sold` - Mark as sold
+- `GET /api/transactions/:id/contact` - Get contact info
 
 ### Development Commands
 
@@ -115,25 +103,27 @@ docker-compose -f infra/docker/docker-compose.yml up
 docker-compose -f infra/docker/docker-compose.yml -f docker-compose.prod.yml up
 ```
 
-### Tasks Completed
+### Key Features
 
-✅ Monorepo structure with services/bot and services/api  
-✅ Root package.json with workspaces and scripts  
-✅ Environment configuration template  
-✅ Database migrations and schema  
-✅ Telegram bot with grammY (sell/browse/admin commands)  
-✅ Express API with routes and webhooks  
-✅ Stripe Checkout integration and webhook handling  
-✅ AWS KMS encryption for sensitive data  
-✅ Admin endpoints and Telegram moderation  
-✅ Docker setup for local development  
-✅ Comprehensive README with setup instructions  
+✅ **Simple Discovery App** - No payment processing  
+✅ **Direct Communication** - Buyers contact sellers via Telegram  
+✅ **Telegram File Storage** - Uses Telegram's built-in file system  
+✅ **Admin Moderation** - Telegram-based listing verification  
+✅ **Minimal Dependencies** - Only 6 environment variables needed  
+
+### User Flow
+
+1. **Seller** creates listing with `/sell`
+2. **Admin** approves listing via `/verify`
+3. **Buyer** browses with `/browse`
+4. **Buyer** contacts seller directly via Telegram
+5. **Seller** marks item as sold
 
 ### Next Steps
 
-1. Create Stripe account and connect platform
-2. Configure AWS S3 & KMS
-3. Setup Telegram bot token via @BotFather
-4. Deploy to production environment
-5. Add monitoring and logging
-6. Implement additional security measures
+1. Create Telegram bot token via @BotFather
+2. Deploy to Railway or your preferred platform
+3. Set up webhook URL
+4. Start using!
+
+**No AWS, Stripe, or complex integrations required!** 🎉
