@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Bot, InlineKeyboard } from 'grammy';
 import axios from 'axios';
-import { saveTelegramFileToS3 } from './s3';
+import { saveTelegramFile } from './s3';
 import fetch from 'node-fetch';
 
 const bot = new Bot(process.env.BOT_TOKEN!);
@@ -62,8 +62,8 @@ bot.on('message', async ctx => {
       }
       
       const fileId = doc.file_id;
-      const s3Key = await saveTelegramFileToS3(ctx, fileId);
-      session.proof_s3_key = s3Key;
+      const telegramFilePath = await saveTelegramFile(ctx, fileId);
+      session.proof_s3_key = telegramFilePath;
       
       // Send to backend API
       const response = await axios.post(`${process.env.PLATFORM_BASE_URL}/api/listings`, {
@@ -194,8 +194,9 @@ bot.callbackQuery(/proof:(.+)/, async ctx => {
     const listing = resp.data;
     
     if (listing.proof_s3_key) {
-      // In a real implementation, you'd generate a signed URL for the S3 object
-      await ctx.reply('📎 Proof document is available. Contact support if you need access.');
+      // Generate Telegram file URL
+      const fileUrl = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${listing.proof_s3_key}`;
+      await ctx.reply(`📎 Proof document:\n${fileUrl}`);
     } else {
       await ctx.reply('No proof document available for this listing.');
     }
