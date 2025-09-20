@@ -381,13 +381,16 @@ async function createListing(ctx: any, userId: number, listingData: any) {
       status: 'pending_verification'
     }).returning('*');
     
+    // Post to channel
+    await postListingToChannel(listing[0], user);
+    
     await ctx.reply(
       `🎉 **Listing Created Successfully!**\n\n` +
       `📝 **Title:** ${listingData.title}\n` +
       `💰 **Price:** $${(listingData.price_cents / 100).toFixed(2)}\n` +
       `📦 **Delivery:** ${listingData.delivery_type}\n` +
       `📊 **Status:** Pending Verification\n\n` +
-      `Your listing is now under review and will be visible to other users once approved.\n\n` +
+      `Your listing has been posted to our trading channel and is now under review!\n\n` +
       `Use /portfolio to view your listings or /listings to see other opportunities!`,
       { parse_mode: 'Markdown' }
     );
@@ -398,6 +401,48 @@ async function createListing(ctx: any, userId: number, listingData: any) {
       'There was an error saving your listing. Please try again later or contact support.',
       { parse_mode: 'Markdown' }
     );
+  }
+}
+
+// Post listing to Telegram channel
+async function postListingToChannel(listing: any, user: any) {
+  try {
+    const channelId = process.env.CHANNEL_ID;
+    if (!channelId) {
+      console.log('CHANNEL_ID not set, skipping channel post');
+      return;
+    }
+    
+    const price = (listing.price_cents / 100).toFixed(2);
+    const deliveryEmoji = {
+      'code': '💻',
+      'file': '📄',
+      'manual': '👤'
+    }[listing.delivery_type] || '📦';
+    
+    const message = 
+      `🆕 **New Trading Opportunity!**\n\n` +
+      `📝 **${listing.title}**\n\n` +
+      `📋 **Description:**\n${listing.description}\n\n` +
+      `🏷️ **Category:** ${listing.category}\n` +
+      `💰 **Price:** $${price} USD\n` +
+      `${deliveryEmoji} **Delivery:** ${listing.delivery_type}\n\n` +
+      `👤 **Seller:** ${user.display_name || user.username || 'Anonymous'}\n` +
+      `📅 **Posted:** ${new Date(listing.created_at).toLocaleDateString()}\n\n` +
+      `🔄 **Status:** Pending Verification\n\n` +
+      `💬 **Interested?** Contact the seller directly!\n` +
+      `📊 **View All Listings:** @${process.env.BOT_USERNAME || 'your_bot'}\n\n` +
+      `#Exchango #Trading #${listing.category.replace(/\s+/g, '')}`;
+    
+    await bot.api.sendMessage(channelId, message, { 
+      parse_mode: 'Markdown',
+      disable_web_page_preview: true
+    });
+    
+    console.log(`Posted listing ${listing.id} to channel ${channelId}`);
+  } catch (error) {
+    console.error('Error posting to channel:', error);
+    // Don't throw error - listing creation should still succeed even if channel post fails
   }
 }
 
