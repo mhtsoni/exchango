@@ -677,10 +677,12 @@ async function sendApprovalRequest(listing: any, user: any) {
     // Send approval request to all approvers
     for (const approverId of approverIds) {
       try {
-        await bot.api.sendMessage(approverId, message, {
+        console.log(`Sending approval request to approver ${approverId}`);
+        const result = await bot.api.sendMessage(approverId, message, {
           parse_mode: 'Markdown',
           reply_markup: approvalKeyboard
         });
+        console.log(`Approval request sent to ${approverId}, result:`, result);
       } catch (error) {
         console.error(`Error sending approval request to user ${approverId}:`, error);
       }
@@ -723,12 +725,12 @@ async function postListingToChannel(listing: any, user: any) {
       `📊 **View All Listings:** @${process.env.BOT_USERNAME || 'your_bot'}\n\n` +
       `#Exchango #Trading #${listing.category.replace(/\s+/g, '')}`;
     
-    await bot.api.sendMessage(channelId, message, { 
+    const result = await bot.api.sendMessage(channelId, message, { 
       parse_mode: 'Markdown',
       link_preview_options: { is_disabled: true }
     });
     
-    console.log(`Posted listing ${listing.id} to channel ${channelId}`);
+    console.log(`Posted listing ${listing.id} to channel ${channelId}, result:`, result);
   } catch (error) {
     console.error('Error posting to channel:', error);
     // Don't throw error - listing creation should still succeed even if channel post fails
