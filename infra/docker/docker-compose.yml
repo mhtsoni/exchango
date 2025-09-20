@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: exchango
+      POSTGRES_USER: exchango
+      POSTGRES_PASSWORD: exchango
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U exchango"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.api
+    environment:
+      DATABASE_URL: postgres://exchango:exchango@postgres:5432/exchango
+      PORT: 4000
+      PLATFORM_BASE_URL: http://localhost:4000
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../../:/app
+    command: ["pnpm", "--filter", "api", "dev"]
+
+  bot:
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.bot
+    environment:
+      DATABASE_URL: postgres://exchango:exchango@postgres:5432/exchango
+      PLATFORM_BASE_URL: http://api:4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    volumes:
+      - ../../:/app
+    command: ["pnpm", "--filter", "bot", "dev"]
+
+volumes:
+  postgres_data:
+  redis_data:

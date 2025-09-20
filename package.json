@@ -1,0 +1,19 @@
+{
+  "name": "exchango",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["services/*"],
+  "scripts": {
+    "dev:bot": "pnpm --filter bot dev",
+    "dev:api": "pnpm --filter api dev",
+    "dev": "concurrently \"pnpm dev:bot\" \"pnpm dev:api\"",
+    "migrate": "pnpm --filter api knex migrate:latest --knexfile services/api/knexfile.ts",
+    "migrate:rollback": "pnpm --filter api knex migrate:down --knexfile services/api/knexfile.ts",
+    "build": "pnpm --filter bot build && pnpm --filter api build",
+    "start": "pnpm --filter bot start && pnpm --filter api start"
+  },
+  "devDependencies": {
+    "concurrently": "^7.0.0",
+    "pnpm": "^8.0.0"
+  }
+}
