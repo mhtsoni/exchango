@@ -22,11 +22,9 @@ COPY infra ./infra
 # Build API service specifically
 RUN cd services/api && npm run build
 
-# Compile migrations separately
+# Copy JavaScript migration files
 RUN mkdir -p /app/services/api/dist/infra/migrations
-RUN cd /app/services/api && npx tsc ../../infra/migrations/*.ts --outDir ./dist/infra/migrations --target ES2020 --module commonjs
-RUN ls -la /app/services/api/dist/
-RUN find /app/services/api/dist -name "*.js" -type f
+RUN cp /app/infra/migrations/*.js /app/services/api/dist/infra/migrations/
 RUN ls -la /app/services/api/dist/infra/migrations/
 
 # Expose port
