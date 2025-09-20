@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "ts-node-dev src/index.ts",
-    "start": "node dist/index.js",
+    "start": "node dist/services/api/src/index.js",
     "build": "tsc",
     "migrate": "knex migrate:latest --knexfile ./knexfile.ts",
     "migrate:rollback": "knex migrate:down --knexfile ./knexfile.ts"
