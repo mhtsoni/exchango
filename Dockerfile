@@ -6,6 +6,7 @@ WORKDIR /app
 COPY package.json ./
 COPY services/bot/package.json ./services/bot/
 COPY services/api/package.json ./services/api/
+COPY services/api/tsconfig.json ./services/api/
 
 # Install dependencies using npm (no lock file needed)
 RUN npm install --no-package-lock
@@ -15,8 +16,8 @@ COPY services/bot ./services/bot
 COPY services/api ./services/api
 COPY infra ./infra
 
-# Build both services
-RUN npm run build
+# Build API service specifically
+RUN cd services/api && npm run build
 
 # Expose port
 EXPOSE 4000
