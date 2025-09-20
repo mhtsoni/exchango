@@ -1,6 +1,5 @@
 import express from 'express';
 import db from '../database';
-import { encryptCode } from '../utils/kms';
 import axios from 'axios';
 
 const router = express.Router();
