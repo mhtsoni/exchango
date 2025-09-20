@@ -22,6 +22,8 @@ COPY infra ./infra
 # Build API service specifically
 RUN cd services/api && npm run build
 RUN ls -la /app/services/api/dist/
+RUN find /app/services/api/dist -name "*.js" -type f
+RUN ls -la /app/services/api/dist/infra/migrations/ || echo "Migrations directory not found"
 
 # Expose port
 EXPOSE 4000
