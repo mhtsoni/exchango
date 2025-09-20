@@ -416,14 +416,19 @@ bot.on('callback_query:data', async (ctx) => {
     
     // Handle approval actions
     else if (data.startsWith('approve_') || data.startsWith('deny_')) {
+      console.log(`Approval action received: ${data} from user ${userId}`);
       const approverIds = getApproverUserIds();
+      console.log(`Approver IDs: ${approverIds}, User ID: ${userId}`);
+      
       if (!approverIds.includes(userId)) {
+        console.log(`User ${userId} not authorized to approve listings`);
         await ctx.answerCallbackQuery('❌ You are not authorized to approve listings.');
         return;
       }
       
-      const listingId = parseInt(data.replace(/^(approve_|deny_)/, ''));
+      const listingId = data.replace(/^(approve_|deny_)/, '');
       const isApproved = data.startsWith('approve_');
+      console.log(`Processing ${isApproved ? 'approval' : 'rejection'} for listing ${listingId}`);
       
       try {
         // Update listing status in database
