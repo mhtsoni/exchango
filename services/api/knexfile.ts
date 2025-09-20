@@ -12,7 +12,7 @@ const config: { [key: string]: Knex.Config } = {
     client: 'pg',
     connection: process.env.DATABASE_URL,
     migrations: {
-      directory: '../../infra/migrations'
+      directory: './dist/infra/migrations'
     },
     pool: {
       min: 2,
