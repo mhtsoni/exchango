@@ -10,7 +10,7 @@ const bot = new Bot(process.env.BOT_TOKEN!);
 const sessions = new Map<number, any>();
 
 // start command
-bot.command('start', ctx => ctx.reply('Welcome to Exchango! 🚀\n\nUse /sell to list items or /browse to find listings.'));
+bot.command('start', ctx => ctx.reply('Welcome to Exchango! 🚀\n\nA marketplace for digital subscriptions and tickets.\n\nUse /sell to list items or /browse to find listings.'));
 
 // SELL flow
 bot.command('sell', async ctx => {
@@ -101,7 +101,7 @@ bot.command('browse', async ctx => {
     for (const listing of listings.slice(0, 10)) { // Limit to 10 listings
       const text = `🛍️ ${listing.title}\n💰 $${(listing.price_cents/100).toFixed(2)}\n📝 ${listing.description || 'No description'}\n📦 Delivery: ${listing.delivery_type}`;
       const keyboard = new InlineKeyboard()
-        .text('🛒 Buy', `buy:${listing.id}`)
+        .text('💬 Contact Seller', `contact:${listing.id}`)
         .text('🔍 View Proof', `proof:${listing.id}`);
       
       await ctx.reply(text, { reply_markup: keyboard });
@@ -112,26 +112,75 @@ bot.command('browse', async ctx => {
   }
 });
 
+// My listings command
+bot.command('mylistings', async ctx => {
+  try {
+    const res = await fetch(`${process.env.PLATFORM_BASE_URL}/api/listings?seller_telegram_id=${ctx.from!.id}`);
+    const listings = await res.json();
+    
+    if (!listings.length) {
+      return ctx.reply('You have no listings yet. Use /sell to create one!');
+    }
+    
+    for (const listing of listings) {
+      const statusEmoji = listing.status === 'active' ? '✅' : 
+                         listing.status === 'sold' ? '💰' : 
+                         listing.status === 'pending_verification' ? '⏳' : '❌';
+      
+      const text = `${statusEmoji} ${listing.title}\n💰 $${(listing.price_cents/100).toFixed(2)}\n📊 Status: ${listing.status}`;
+      const keyboard = new InlineKeyboard();
+      
+      if (listing.status === 'active') {
+        keyboard.text('💰 Mark as Sold', `sold:${listing.id}`);
+      }
+      
+      await ctx.reply(text, { reply_markup: keyboard });
+    }
+  } catch (error) {
+    console.error('Error fetching user listings:', error);
+    return ctx.reply('❌ Failed to load your listings. Please try again.');
+  }
+});
+
 // Callback query handlers
-bot.callbackQuery(/buy:(.+)/, async ctx => {
+bot.callbackQuery(/contact:(.+)/, async ctx => {
   try {
     const listingId = ctx.callbackQuery.data!.split(':')[1];
     
-    // Create transaction
-    const resp = await axios.post(`${process.env.PLATFORM_BASE_URL}/api/transactions`, {
-      listing_id: listingId,
-      buyer_telegram_id: ctx.from!.id
-    }, {
-      headers: {
-        'X-Telegram-Id': ctx.from!.id.toString()
-      }
+    // Get seller contact info
+    const resp = await axios.get(`${process.env.PLATFORM_BASE_URL}/api/transactions/${listingId}/contact`);
+    const contactInfo = resp.data;
+    
+    const message = `📞 Contact Seller\n\n` +
+                   `Item: ${contactInfo.listing_title}\n` +
+                   `Price: $${(contactInfo.listing_price/100).toFixed(2)}\n\n` +
+                   `Seller: @${contactInfo.seller_username || 'No username'}\n\n` +
+                   `💬 You can now contact the seller directly via Telegram!\n\n` +
+                   `Suggested message:\n"${contactInfo.contact_message}"`;
+    
+    await ctx.reply(message);
+    return ctx.api.answerCallbackQuery(ctx.callbackQuery.id, { text: 'Contact info sent!' });
+  } catch (error) {
+    console.error('Error getting contact info:', error);
+    await ctx.reply('❌ Failed to get contact info. Please try again.');
+    return ctx.api.answerCallbackQuery(ctx.callbackQuery.id, { text: 'Error occurred' });
+  }
+});
+
+bot.callbackQuery(/sold:(.+)/, async ctx => {
+  try {
+    const listingId = ctx.callbackQuery.data!.split(':')[1];
+    
+    // Mark listing as sold
+    await axios.post(`${process.env.PLATFORM_BASE_URL}/api/transactions/${listingId}/sold`, {
+      seller_telegram_id: ctx.from!.id
     });
     
-    await ctx.reply(`💳 Complete your purchase:\n${resp.data.checkout_url}`);
-    return ctx.api.answerCallbackQuery(ctx.callbackQuery.id, { text: 'Checkout link sent!' });
+    await ctx.reply('✅ Listing marked as sold! Congratulations on your sale! 🎉');
+    return ctx.api.answerCallbackQuery(ctx.callbackQuery.id, { text: 'Marked as sold!' });
   } catch (error) {
-    console.error('Error creating transaction:', error);
-    await ctx.reply('❌ Failed to create transaction. Please try again.');
+    console.error('Error marking as sold:', error);
+    await ctx.reply('❌ Failed to mark as sold. Please try again.');
     return ctx.api.answerCallbackQuery(ctx.callbackQuery.id, { text: 'Error occurred' });
   }
 });
@@ -207,6 +256,17 @@ bot.command(/verify (.+) (.+)/, async ctx => {
   }
 });
 
+// Help command
+bot.command('help', ctx => ctx.reply(
+  '🤖 Exchango Bot Commands:\n\n' +
+  '/start - Welcome message\n' +
+  '/sell - Create a new listing\n' +
+  '/browse - Browse active listings\n' +
+  '/mylistings - View your listings\n' +
+  '/help - Show this help message\n\n' +
+  '💬 To contact sellers, use the "Contact Seller" button on listings!'
+));
+
 // Error handling
 bot.catch((err) => {
   console.error('Bot error:', err);
@@ -214,4 +274,4 @@ bot.catch((err) => {
 
 // Start bot
 bot.start();
-console.log('Bot started successfully!');
+console.log('Exchango Bot started successfully!');

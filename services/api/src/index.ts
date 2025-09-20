@@ -7,7 +7,6 @@ import rateLimit from 'express-rate-limit';
 import listingsRouter from './routes/listings';
 import transactionsRouter from './routes/transactions';
 import adminRouter from './routes/admin';
-import stripeWebhook from './webhooks/stripe';
 import { initializeDatabase } from './database';
 
 const app = express();
@@ -31,9 +30,6 @@ app.use('/api/listings', listingsRouter);
 app.use('/api/transactions', transactionsRouter);
 app.use('/api/admin', adminRouter);
 
-// Webhooks (raw body for Stripe signature verification)
-app.post('/webhooks/stripe', bodyParser.raw({type: 'application/json'}), stripeWebhook);
-
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -51,7 +47,7 @@ async function startServer() {
     await initializeDatabase();
     const port = process.env.PORT || 4000;
     app.listen(port, () => {
-      console.log(`API server listening on port ${port}`);
+      console.log(`Exchango API server listening on port ${port}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
