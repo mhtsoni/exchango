@@ -25,9 +25,9 @@ RUN cd services/api && npm run build
 # Copy JavaScript migration files and knexfile
 RUN mkdir -p /app/services/api/dist/infra/migrations
 RUN cp /app/infra/migrations/*.js /app/services/api/dist/infra/migrations/
-RUN cp /app/services/api/knexfile.js /app/services/api/dist/
+RUN cp /app/services/api/knexfile.js /app/services/api/dist/services/api/
 RUN ls -la /app/services/api/dist/infra/migrations/
-RUN ls -la /app/services/api/dist/knexfile.js
+RUN ls -la /app/services/api/dist/services/api/knexfile.js
 
 # Expose port
 EXPOSE 4000
