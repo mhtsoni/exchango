@@ -2,6 +2,22 @@ import express from 'express';
 import { Bot } from 'grammy';
 import db from '../database';
 
+// User state management for form flows
+const userStates = new Map<number, any>();
+
+// Helper functions for form flow
+function setUserState(userId: number, state: any) {
+  userStates.set(userId, state);
+}
+
+function getUserState(userId: number) {
+  return userStates.get(userId);
+}
+
+function clearUserState(userId: number) {
+  userStates.delete(userId);
+}
+
 const router = express.Router();
 
 // Initialize bot for webhook processing
@@ -75,32 +91,23 @@ bot.command('listings', async (ctx) => {
 
 bot.command('sell', async (ctx) => {
   try {
+    const userId = ctx.from?.id;
+    if (!userId) return;
+    
+    // Initialize user state for listing creation
+    setUserState(userId, {
+      step: 'title',
+      listingData: {}
+    });
+    
     await ctx.reply(
       `💰 **Create New Listing**\n\n` +
-      `To create a new trading opportunity, please provide the following information:\n\n` +
-      `📝 **Title**: What are you selling?\n` +
-      `📋 **Description**: Details about your offer\n` +
-      `🏷️ **Category**: Type of trading opportunity\n` +
-      `💰 **Price**: Amount in USD\n` +
-      `📦 **Delivery Type**: How will you deliver? (code/file/manual)\n\n` +
-      `Please reply with your listing details in this format:\n\n` +
-      `**Title:** Your title here\n` +
-      `**Description:** Your description here\n` +
-      `**Category:** Your category here\n` +
-      `**Price:** $XX.XX\n` +
-      `**Delivery:** code/file/manual\n\n` +
-      `Example:\n` +
-      `**Title:** Python Trading Bot\n` +
-      `**Description:** Automated trading bot for crypto markets\n` +
-      `**Category:** Software\n` +
-      `**Price:** $50.00\n` +
-      `**Delivery:** code`,
+      `Let's create your trading opportunity step by step!\n\n` +
+      `📝 **Step 1/5: Title**\n` +
+      `What are you selling? Please provide a clear, descriptive title.\n\n` +
+      `*Example: "Python Trading Bot for Crypto Markets"*`,
       { parse_mode: 'Markdown' }
     );
-    
-    // Store user state for listing creation
-    // In a full implementation, you'd use a state management system
-    await ctx.reply('Send your listing details now, or use /cancel to abort.');
   } catch (error) {
     console.error('Error handling /sell command:', error);
     await ctx.reply('Sorry, there was an error. Please try again later.');
@@ -219,12 +226,180 @@ bot.command('help', async (ctx) => {
   );
 });
 
-// Handle any other messages
-bot.on('message', async (ctx) => {
+bot.command('cancel', async (ctx) => {
+  const userId = ctx.from?.id;
+  if (!userId) return;
+  
+  clearUserState(userId);
   await ctx.reply(
-    'Hi! I\'m the Exchango trading bot. Use /start to begin or /help for available commands.'
+    '❌ **Cancelled**\n\n' +
+    'Listing creation has been cancelled. Use /sell to start again or /help for other commands.',
+    { parse_mode: 'Markdown' }
   );
 });
+
+// Handle form flow messages
+bot.on('message', async (ctx) => {
+  try {
+    const userId = ctx.from?.id;
+    const messageText = ctx.message?.text;
+    
+    if (!userId || !messageText) return;
+    
+    const userState = getUserState(userId);
+    
+    // If user is in a form flow, handle the current step
+    if (userState && userState.step) {
+      await handleFormStep(ctx, userId, messageText, userState);
+      return;
+    }
+    
+    // Default message for users not in a form flow
+    await ctx.reply(
+      'Hi! I\'m the Exchango trading bot. Use /start to begin or /help for available commands.'
+    );
+  } catch (error) {
+    console.error('Error handling message:', error);
+    await ctx.reply('Sorry, there was an error. Please try again.');
+  }
+});
+
+// Handle form flow steps
+async function handleFormStep(ctx: any, userId: number, messageText: string, userState: any) {
+  const { step, listingData } = userState;
+  
+  switch (step) {
+    case 'title':
+      listingData.title = messageText;
+      setUserState(userId, { step: 'description', listingData });
+      await ctx.reply(
+        `✅ **Title saved!**\n\n` +
+        `📋 **Step 2/5: Description**\n` +
+        `Please provide a detailed description of what you're selling.\n\n` +
+        `*Example: "A fully automated trading bot that analyzes market trends and executes trades on your behalf..."*`,
+        { parse_mode: 'Markdown' }
+      );
+      break;
+      
+    case 'description':
+      listingData.description = messageText;
+      setUserState(userId, { step: 'category', listingData });
+      await ctx.reply(
+        `✅ **Description saved!**\n\n` +
+        `🏷️ **Step 3/5: Category**\n` +
+        `What category does this belong to? Choose from:\n\n` +
+        `• Software\n` +
+        `• Trading Strategy\n` +
+        `• Educational Content\n` +
+        `• Tools & Utilities\n` +
+        `• Other\n\n` +
+        `*Just type the category name*`,
+        { parse_mode: 'Markdown' }
+      );
+      break;
+      
+    case 'category':
+      listingData.category = messageText;
+      setUserState(userId, { step: 'price', listingData });
+      await ctx.reply(
+        `✅ **Category saved!**\n\n` +
+        `💰 **Step 4/5: Price**\n` +
+        `How much do you want to charge? Enter the amount in USD.\n\n` +
+        `*Examples: 25, 50.00, 100*`,
+        { parse_mode: 'Markdown' }
+      );
+      break;
+      
+    case 'price':
+      const price = parseFloat(messageText.replace(/[$,]/g, ''));
+      if (isNaN(price) || price <= 0) {
+        await ctx.reply(
+          '❌ **Invalid price!**\n\n' +
+          'Please enter a valid price in USD (numbers only).\n' +
+          '*Examples: 25, 50.00, 100*',
+          { parse_mode: 'Markdown' }
+        );
+        return;
+      }
+      
+      listingData.price_cents = Math.round(price * 100);
+      setUserState(userId, { step: 'delivery', listingData });
+      await ctx.reply(
+        `✅ **Price saved!**\n\n` +
+        `📦 **Step 5/5: Delivery Method**\n` +
+        `How will you deliver this to buyers? Choose one:\n\n` +
+        `• **code** - Source code files\n` +
+        `• **file** - Documents, PDFs, etc.\n` +
+        `• **manual** - Manual delivery/instructions\n\n` +
+        `*Just type: code, file, or manual*`,
+        { parse_mode: 'Markdown' }
+      );
+      break;
+      
+    case 'delivery':
+      const deliveryType = messageText.toLowerCase().trim();
+      if (!['code', 'file', 'manual'].includes(deliveryType)) {
+        await ctx.reply(
+          '❌ **Invalid delivery type!**\n\n' +
+          'Please choose one of these options:\n' +
+          '• code\n• file\n• manual',
+          { parse_mode: 'Markdown' }
+        );
+        return;
+      }
+      
+      listingData.delivery_type = deliveryType;
+      
+      // Create the listing
+      await createListing(ctx, userId, listingData);
+      clearUserState(userId);
+      break;
+      
+    default:
+      clearUserState(userId);
+      await ctx.reply('Something went wrong. Please start over with /sell');
+  }
+}
+
+// Create listing in database
+async function createListing(ctx: any, userId: number, listingData: any) {
+  try {
+    const user = await db('users').where('telegram_id', userId).first();
+    if (!user) {
+      await ctx.reply('Please use /start first to create your account.');
+      return;
+    }
+    
+    const listing = await db('listings').insert({
+      seller_id: user.id,
+      title: listingData.title,
+      description: listingData.description,
+      category: listingData.category,
+      price_cents: listingData.price_cents,
+      currency: 'usd',
+      delivery_type: listingData.delivery_type,
+      status: 'pending_verification'
+    }).returning('*');
+    
+    await ctx.reply(
+      `🎉 **Listing Created Successfully!**\n\n` +
+      `📝 **Title:** ${listingData.title}\n` +
+      `💰 **Price:** $${(listingData.price_cents / 100).toFixed(2)}\n` +
+      `📦 **Delivery:** ${listingData.delivery_type}\n` +
+      `📊 **Status:** Pending Verification\n\n` +
+      `Your listing is now under review and will be visible to other users once approved.\n\n` +
+      `Use /portfolio to view your listings or /listings to see other opportunities!`,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (error) {
+    console.error('Error creating listing:', error);
+    await ctx.reply(
+      '❌ **Error creating listing!**\n\n' +
+      'There was an error saving your listing. Please try again later or contact support.',
+      { parse_mode: 'Markdown' }
+    );
+  }
+}
 
 // Initialize the bot
 bot.init().catch(console.error);
