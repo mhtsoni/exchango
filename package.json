@@ -10,7 +10,11 @@
     "migrate": "pnpm --filter api knex migrate:latest --knexfile services/api/knexfile.ts",
     "migrate:rollback": "pnpm --filter api knex migrate:down --knexfile services/api/knexfile.ts",
     "build": "pnpm --filter bot build && pnpm --filter api build",
-    "start": "pnpm --filter bot start && pnpm --filter api start"
+    "start": "pnpm --filter bot start && pnpm --filter api start",
+    "railway:deploy": "railway up",
+    "railway:migrate": "railway run pnpm migrate",
+    "railway:logs": "railway logs",
+    "railway:shell": "railway shell"
   },
   "devDependencies": {
     "concurrently": "^7.0.0",
