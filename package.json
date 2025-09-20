@@ -11,6 +11,7 @@
     "migrate:rollback": "pnpm --filter api knex migrate:down --knexfile services/api/knexfile.ts",
     "build": "pnpm --filter bot build && pnpm --filter api build",
     "start": "pnpm --filter bot start && pnpm --filter api start",
+    "start:api": "cd services/api && npm start",
     "railway:deploy": "railway up",
     "railway:migrate": "railway run pnpm migrate",
     "railway:logs": "railway logs",
