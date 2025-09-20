@@ -18,6 +18,13 @@ function clearUserState(userId: number) {
   userStates.delete(userId);
 }
 
+// Helper function to get approver user IDs
+function getApproverUserIds(): number[] {
+  const approverIds = process.env.APPROVER_USER_IDS;
+  if (!approverIds) return [];
+  return approverIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+}
+
 const router = express.Router();
 
 // Initialize bot for webhook processing
@@ -407,6 +414,76 @@ bot.on('callback_query:data', async (ctx) => {
       );
     }
     
+    // Handle approval actions
+    else if (data.startsWith('approve_') || data.startsWith('deny_')) {
+      const approverIds = getApproverUserIds();
+      if (!approverIds.includes(userId)) {
+        await ctx.answerCallbackQuery('❌ You are not authorized to approve listings.');
+        return;
+      }
+      
+      const listingId = parseInt(data.replace(/^(approve_|deny_)/, ''));
+      const isApproved = data.startsWith('approve_');
+      
+      try {
+        // Update listing status in database
+        const status = isApproved ? 'active' : 'rejected';
+        await db('listings').where('id', listingId).update({ status });
+        
+        const listing = await db('listings').where('id', listingId).first();
+        const seller = await db('users').where('id', listing.seller_id).first();
+        
+        if (isApproved) {
+          // Post to channel
+          await postListingToChannel(listing, seller);
+          
+          // Notify seller of approval
+          await bot.api.sendMessage(seller.telegram_id, 
+            `🎉 **Your listing has been approved!**\n\n` +
+            `📝 **${listing.title}**\n\n` +
+            `Your subscription listing is now live on our trading channel!\n\n` +
+            `Use /portfolio to view your listings.`,
+            { parse_mode: 'Markdown' }
+          );
+          
+          // Update approval message
+          await ctx.editMessageText(
+            `✅ **Listing Approved and Posted!**\n\n` +
+            `📝 **${listing.title}**\n` +
+            `👤 **Seller:** ${seller.display_name || seller.username}\n\n` +
+            `The listing has been posted to the trading channel.`,
+            { parse_mode: 'Markdown' }
+          );
+          
+          await ctx.answerCallbackQuery('✅ Listing approved and posted to channel!');
+        } else {
+          // Notify seller of rejection
+          await bot.api.sendMessage(seller.telegram_id, 
+            `❌ **Your listing was not approved**\n\n` +
+            `📝 **${listing.title}**\n\n` +
+            `Unfortunately, your listing did not meet our quality standards or community guidelines.\n\n` +
+            `Please review our guidelines and feel free to submit a new listing.\n\n` +
+            `Use /sell to create a new listing.`,
+            { parse_mode: 'Markdown' }
+          );
+          
+          // Update approval message
+          await ctx.editMessageText(
+            `❌ **Listing Rejected**\n\n` +
+            `📝 **${listing.title}**\n` +
+            `👤 **Seller:** ${seller.display_name || seller.username}\n\n` +
+            `The seller has been notified of the rejection.`,
+            { parse_mode: 'Markdown' }
+          );
+          
+          await ctx.answerCallbackQuery('❌ Listing rejected');
+        }
+      } catch (error) {
+        console.error('Error processing approval:', error);
+        await ctx.answerCallbackQuery('❌ Error processing approval. Please try again.');
+      }
+    }
+    
     await ctx.answerCallbackQuery();
   } catch (error) {
     console.error('Error handling callback query:', error);
@@ -526,19 +603,20 @@ async function createListing(ctx: any, userId: number, listingData: any) {
       price_cents: listingData.price_cents,
       currency: 'usd',
       delivery_type: listingData.delivery_type,
-      status: 'pending_verification'
+      status: 'pending_approval'
     }).returning('*');
     
-    // Post to channel
-    await postListingToChannel(listing[0], user);
+    // Send approval request to admins
+    await sendApprovalRequest(listing[0], user);
     
     await ctx.reply(
       `🎉 **Listing Created Successfully!**\n\n` +
       `📝 **Title:** ${listingData.title}\n` +
       `💰 **Price:** $${(listingData.price_cents / 100).toFixed(2)}\n` +
       `📦 **Delivery:** ${listingData.delivery_type}\n` +
-      `📊 **Status:** Pending Verification\n\n` +
-      `Your listing has been posted to our trading channel and is now under review!\n\n` +
+      `📊 **Status:** Awaiting Admin Approval\n\n` +
+      `Your listing has been submitted and is awaiting admin approval before being posted to our trading channel.\n\n` +
+      `You'll be notified once it's approved or if any changes are needed.\n\n` +
       `Use /portfolio to view your listings or /listings to see other opportunities!`,
       { parse_mode: 'Markdown' }
     );
@@ -553,6 +631,57 @@ async function createListing(ctx: any, userId: number, listingData: any) {
 }
 
 // Post listing to Telegram channel
+async function sendApprovalRequest(listing: any, user: any) {
+  try {
+    const approverIds = getApproverUserIds();
+    if (approverIds.length === 0) {
+      console.log('No approver user IDs configured, skipping approval request');
+      return;
+    }
+
+    const price = (listing.price_cents / 100).toFixed(2);
+    const deliveryEmojiMap: { [key: string]: string } = {
+      'code': '💻',
+      'file': '📄',
+      'manual': '👤'
+    };
+    const deliveryEmoji = deliveryEmojiMap[listing.delivery_type] || '📦';
+
+    const message = 
+      `🔍 **New Listing Awaiting Approval**\n\n` +
+      `📝 **Title:** ${listing.title}\n\n` +
+      `📋 **Description:**\n${listing.description}\n\n` +
+      `🏷️ **Category:** ${listing.category}\n` +
+      `💰 **Price:** $${price} USD\n` +
+      `${deliveryEmoji} **Delivery:** ${listing.delivery_type}\n\n` +
+      `👤 **Seller:** ${user.display_name || user.username || 'Anonymous'}\n` +
+      `🆔 **Seller ID:** ${user.telegram_id}\n` +
+      `📅 **Submitted:** ${new Date(listing.created_at).toLocaleDateString()}\n\n` +
+      `🆔 **Listing ID:** ${listing.id}\n\n` +
+      `Please review this listing and approve or deny it.`;
+
+    const approvalKeyboard = new InlineKeyboard()
+      .text('✅ Approve', `approve_${listing.id}`)
+      .text('❌ Deny', `deny_${listing.id}`);
+
+    // Send approval request to all approvers
+    for (const approverId of approverIds) {
+      try {
+        await bot.api.sendMessage(approverId, message, {
+          parse_mode: 'Markdown',
+          reply_markup: approvalKeyboard
+        });
+      } catch (error) {
+        console.error(`Error sending approval request to user ${approverId}:`, error);
+      }
+    }
+
+    console.log(`Sent approval request for listing ${listing.id} to ${approverIds.length} approvers`);
+  } catch (error) {
+    console.error('Error sending approval request:', error);
+  }
+}
+
 async function postListingToChannel(listing: any, user: any) {
   try {
     const channelId = process.env.CHANNEL_ID;
@@ -562,11 +691,12 @@ async function postListingToChannel(listing: any, user: any) {
     }
     
     const price = (listing.price_cents / 100).toFixed(2);
-    const deliveryEmoji = {
+    const deliveryEmojiMap: { [key: string]: string } = {
       'code': '💻',
       'file': '📄',
       'manual': '👤'
-    }[listing.delivery_type] || '📦';
+    };
+    const deliveryEmoji = deliveryEmojiMap[listing.delivery_type] || '📦';
     
     const message = 
       `🆕 **New Trading Opportunity!**\n\n` +
@@ -584,7 +714,7 @@ async function postListingToChannel(listing: any, user: any) {
     
     await bot.api.sendMessage(channelId, message, { 
       parse_mode: 'Markdown',
-      disable_web_page_preview: true
+      link_preview_options: { is_disabled: true }
     });
     
     console.log(`Posted listing ${listing.id} to channel ${channelId}`);
