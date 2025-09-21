@@ -106,7 +106,9 @@ export class ListingService {
         `${user.username ? `@${escapeMarkdown(user.username)}` : 'Someone'} is selling ${escapeMarkdown(listing.title)}\n\n` +
         `💰 $${price} USD\n` +
         `📋 ${escapeMarkdown(listing.description)}\n\n` +
-        `${deliveryEmoji} ${escapeMarkdown(listing.delivery_type)} delivery`;
+        `Category: ${escapeMarkdown(listing.category)}\n` +
+        `${deliveryEmoji} Delivery: ${escapeMarkdown(listing.delivery_type)}\n\n` +
+        `List your sharable subscriptions and digital products with @${(process.env.BOT_USERNAME || 'your_bot').replace('@', '')}`;
       
       const result = await this.bot.api.sendMessage(channelId, message, { 
         parse_mode: 'Markdown',
