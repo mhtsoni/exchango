@@ -103,18 +103,10 @@ export class ListingService {
       const escapeMarkdown = (text: string) => text.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
       
       const message = 
-        `🆕 **New Trading Opportunity!**\n\n` +
-        `📝 **${escapeMarkdown(listing.title)}**\n\n` +
-        `📋 **Description:**\n${escapeMarkdown(listing.description)}\n\n` +
-        `🏷️ **Category:** ${escapeMarkdown(listing.category)}\n` +
-        `💰 **Price:** $${price} USD\n` +
-        `${deliveryEmoji} **Delivery:** ${escapeMarkdown(listing.delivery_type)}\n\n` +
-        `👤 **Seller:** ${escapeMarkdown(user.display_name || user.username || 'Anonymous')}\n` +
-        `📅 **Posted:** ${new Date(listing.created_at).toLocaleDateString()}\n\n` +
-        `🔄 **Status:** Active\n\n` +
-        `💬 **Interested?** Contact the seller: ${user.username ? `@${escapeMarkdown(user.username)}` : 'Contact via bot'}\n` +
-        `📊 **View All Listings:** @${(process.env.BOT_USERNAME || 'your_bot').replace('@', '')}\n\n` +
-        `#Exchango #Trading #${escapeMarkdown(listing.category.replace(/\s+/g, ''))}`;
+        `${user.username ? `@${escapeMarkdown(user.username)}` : 'Someone'} is selling ${escapeMarkdown(listing.title)}\n\n` +
+        `💰 $${price} USD\n` +
+        `📋 ${escapeMarkdown(listing.description)}\n\n` +
+        `${deliveryEmoji} ${escapeMarkdown(listing.delivery_type)} delivery`;
       
       const result = await this.bot.api.sendMessage(channelId, message, { 
         parse_mode: 'Markdown',
