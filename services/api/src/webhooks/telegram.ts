@@ -66,9 +66,10 @@ bot.command('start', async (ctx) => {
     let welcomeMessage = `🎉 Welcome to Exchango, ${displayName || username || 'trader'}!\n\n`;
     
     if (username) {
-      welcomeMessage += `✅ **Username:** @${username} - Buyers can contact you directly!\n\n`;
+      welcomeMessage += `✅ **Username:** @${username} - Ready to create listings!\n\n`;
     } else {
-      welcomeMessage += `💡 **Tip:** Set a Telegram username in your profile for direct buyer contact.\n\n`;
+      welcomeMessage += `⚠️ **Important:** You need a Telegram username to create listings!\n` +
+        `Buyers must be able to contact you directly. Go to Telegram Settings → Username to set one.\n\n`;
     }
     
     welcomeMessage += `I'm your personal trading assistant. Here's what you can do:\n\n` +
@@ -119,6 +120,29 @@ bot.command('sell', async (ctx) => {
   try {
     const userId = ctx.from?.id;
     if (!userId) return;
+    
+    // Check if user has username before starting sell flow
+    const user = await db('users').where('telegram_id', userId).first();
+    if (!user) {
+      await ctx.reply('Please use /start first to create your account.');
+      return;
+    }
+    
+    if (!user.username) {
+      await ctx.reply(
+        `⚠️ **Username Required to Create Listings!**\n\n` +
+        `You need to set a Telegram username before you can create listings.\n\n` +
+        `**Why?** Buyers need to contact you directly!\n\n` +
+        `**Steps to set username:**\n` +
+        `1. Go to Telegram Settings\n` +
+        `2. Tap on "Username"\n` +
+        `3. Set your desired username (e.g., @yourname)\n` +
+        `4. Use /start to refresh your profile\n\n` +
+        `Once you've set your username, come back and use /sell to create your listing!`,
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
     
     // Initialize user state for listing creation
     setUserState(userId, {
@@ -982,6 +1006,29 @@ async function handleFormStep(ctx: any, userId: number, messageText: string, use
       
       listingData.title = lines[0].trim();
       listingData.description = lines.slice(1).join('\n').trim();
+      
+      // Check if user has a username before creating listing
+      const user = await db('users').where('telegram_id', userId).first();
+      if (!user?.username) {
+        await ctx.reply(
+          `❌ **Username Required!**\n\n` +
+          `To complete your listing, you need to set a Telegram username first.\n\n` +
+          `**Why?** Buyers need to be able to contact you directly!\n\n` +
+          `**Steps to set username:**\n` +
+          `1. Go to Telegram Settings\n` +
+          `2. Tap on "Username"\n` +
+          `3. Set your desired username (e.g., @yourname)\n` +
+          `4. Come back and try creating your listing again\n\n` +
+          `**Your listing details:**\n` +
+          `📝 **Title:** ${listingData.title}\n` +
+          `💰 **Price:** $${(listingData.price_cents / 100).toFixed(2)}\n` +
+          `📦 **Delivery:** ${listingData.delivery_type}\n\n` +
+          `Once you've set your username, use /sell to create your listing again!`,
+          { parse_mode: 'Markdown' }
+        );
+        clearUserState(userId);
+        return;
+      }
       
       // Create the listing
       await createListing(ctx, userId, listingData);
