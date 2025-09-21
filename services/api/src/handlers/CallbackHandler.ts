@@ -643,41 +643,30 @@ export class CallbackHandler {
       const listings = await this.listingService.getListingsBySeller(user.id);
       
       if (listings.length === 0) {
-        await ctx.editMessageText('You haven\'t shared any subscriptions yet. Use the Share Subscription button to get started!', {
+        await ctx.editMessageText('📊 Your Shared Subscriptions', {
           reply_markup: new InlineKeyboard()
             .text('💰 Share Subscription', 'sell_listing')
             .row()
             .text('🏠 Back to Menu', 'main_menu')
         });
       } else {
-        let message = '📊 **Your Shared Subscriptions**\n\n';
-        const statusEmojiMap: { [key: string]: string } = {
-          'pending_approval': '⏳',
-          'active': '✅',
-          'sold': '💰',
-          'rejected': '❌',
-          'removed': '🗑️'
-        };
-        
-        for (const listing of listings) {
-          const statusEmoji = statusEmojiMap[listing.status] || '❓';
-          const price = (listing.price_cents / 100).toFixed(2);
-          message += `${statusEmoji} **${listing.title}**\n`;
-          message += `💰 $${price} | 🏷️ ${listing.category}\n`;
-          message += `📅 ${new Date(listing.created_at).toLocaleDateString()}\n\n`;
-        }
-        
-        message += 'Click on a listing to manage it:';
-        
         const keyboard = new InlineKeyboard();
         for (const listing of listings) {
-          keyboard.text(`${listing.title}`, `manage_${listing.id}`).row();
+          const statusEmojiMap: { [key: string]: string } = {
+            'pending_approval': '⏳',
+            'active': '✅',
+            'sold': '💰',
+            'rejected': '❌',
+            'removed': '🗑️'
+          };
+          const statusEmoji = statusEmojiMap[listing.status] || '❓';
+          const price = (listing.price_cents / 100).toFixed(2);
+          keyboard.text(`${statusEmoji} ${listing.title} - $${price}`, `manage_${listing.id}`).row();
         }
         
         keyboard.text('💰 Share New Subscription', 'sell_listing');
         
-        await ctx.editMessageText(message, {
-          parse_mode: 'Markdown',
+        await ctx.editMessageText('📊 Your Shared Subscriptions', {
           reply_markup: keyboard
         });
       }
