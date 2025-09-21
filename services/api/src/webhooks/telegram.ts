@@ -79,7 +79,12 @@ bot.command('start', async (ctx) => {
       `⚙️ /settings - Manage your preferences\n\n` +
       `Ready to start trading? Use /listings to see what's available!`;
     
-    await ctx.reply(welcomeMessage);
+    await ctx.reply(welcomeMessage, {
+      reply_markup: new InlineKeyboard()
+        .text('📋 Main Menu', 'main_menu')
+        .row()
+        .text('❓ Help', 'help_menu')
+    });
   } catch (error) {
     console.error('Error handling /start command:', error);
     await ctx.reply('Sorry, there was an error processing your request. Please try again later.');
@@ -372,16 +377,28 @@ bot.command('update', async (ctx) => {
   }
 });
 
+bot.command('menu', async (ctx) => {
+  try {
+    const userId = ctx.from?.id;
+    if (!userId) return;
+    
+    await showMainMenu(ctx, userId);
+  } catch (error) {
+    console.error('Error handling /menu command:', error);
+    await ctx.reply('Sorry, there was an error showing the menu. Please try again.');
+  }
+});
+
 bot.command('help', async (ctx) => {
   await ctx.reply(
     `🤖 **Exchango Bot Help**\n\n` +
     `**Available Commands:**\n` +
     `/start - Welcome message and setup\n` +
+    `/menu - Show main menu with options\n` +
     `/listings - Browse active trading opportunities\n` +
     `/sell - Create a new listing\n` +
     `/portfolio - View your trading history\n` +
     `/settings - Manage your preferences\n` +
-    `/update - Refresh your profile information\n` +
     `/help - Show this help message\n\n` +
     `**Getting Started:**\n` +
     `1. Use /start to begin\n` +
@@ -949,6 +966,145 @@ bot.on('callback_query:data', async (ctx) => {
       );
     }
     
+    // Handle main menu actions
+    else if (data === 'main_menu') {
+      await showMainMenu(ctx, userId);
+    }
+    else if (data === 'browse_listings') {
+      // Trigger listings command
+      await ctx.reply('Loading available listings...');
+      // We'll simulate the listings command here
+      const listings = await db('listings')
+        .where('status', 'active')
+        .orderBy('created_at', 'desc')
+        .limit(10);
+      
+      if (listings.length === 0) {
+        await ctx.reply('No active listings found. Be the first to create one!');
+      } else {
+        let message = '📈 **Available Listings:**\n\n';
+        for (const listing of listings) {
+          const seller = await db('users').where('id', listing.seller_id).first();
+          const price = (listing.price_cents / 100).toFixed(2);
+          message += `📝 **${listing.title}**\n`;
+          message += `💰 $${price} | 🏷️ ${listing.category}\n`;
+          message += `👤 ${seller?.display_name || seller?.username || 'Anonymous'}\n\n`;
+        }
+        await ctx.reply(message, { parse_mode: 'Markdown' });
+      }
+    }
+    else if (data === 'sell_listing') {
+      // Trigger sell command
+      await ctx.reply('Starting listing creation...');
+      // We'll simulate the sell command here
+      const user = await db('users').where('telegram_id', userId).first();
+      if (!user?.username) {
+        await ctx.reply(
+          `⚠️ **Username Required to Create Listings!**\n\n` +
+          `You need to set a Telegram username before you can create listings.\n\n` +
+          `**Why?** Buyers need to contact you directly through your @username.\n\n` +
+          `**How to set username:**\n` +
+          `1. Go to Telegram Settings\n` +
+          `2. Click "Username"\n` +
+          `3. Set your username (e.g., @yourname)\n\n` +
+          `Once set, come back and try creating a listing again!`,
+          { parse_mode: 'Markdown' }
+        );
+      } else {
+        // Start the sell flow
+        setUserState(userId, {
+          step: 'category',
+          data: {}
+        });
+        
+        await ctx.editMessageText(
+          `💰 **Create New Listing**\n\n` +
+          `Let's create your trading listing! First, choose a category:`,
+          {
+            parse_mode: 'Markdown',
+            reply_markup: new InlineKeyboard()
+              .text('🎓 Education', 'category_education')
+              .text('💼 Business', 'category_business').row()
+              .text('🎨 Creative', 'category_creative')
+              .text('💻 Technology', 'category_technology').row()
+              .text('🏠 Lifestyle', 'category_lifestyle')
+              .text('📚 Other', 'category_other').row()
+              .text('❌ Cancel', 'cancel_manage')
+          }
+        );
+      }
+    }
+    else if (data === 'view_portfolio') {
+      // Trigger portfolio command
+      await ctx.reply('Loading your portfolio...');
+      const user = await db('users').where('telegram_id', userId).first();
+      if (!user) {
+        await ctx.reply('Please use /start first to create your account.');
+        return;
+      }
+      
+      const listings = await db('listings')
+        .where('seller_id', user.id)
+        .orderBy('created_at', 'desc');
+      
+      if (listings.length === 0) {
+        await ctx.reply('You haven\'t created any listings yet. Use /sell to create your first one!');
+      } else {
+        let message = '📊 **Your Portfolio**\n\n';
+        const statusEmojiMap: { [key: string]: string } = {
+          'pending_approval': '⏳',
+          'active': '✅',
+          'sold': '💰',
+          'rejected': '❌',
+          'removed': '🗑️'
+        };
+        
+        for (const listing of listings) {
+          const statusEmoji = statusEmojiMap[listing.status] || '❓';
+          const price = (listing.price_cents / 100).toFixed(2);
+          message += `${statusEmoji} **${listing.title}**\n`;
+          message += `💰 $${price} | 🏷️ ${listing.category}\n`;
+          message += `📅 ${new Date(listing.created_at).toLocaleDateString()}\n\n`;
+        }
+        
+        message += 'Click on a listing to manage it:';
+        
+        const keyboard = new InlineKeyboard();
+        for (const listing of listings) {
+          keyboard.text(`${listing.title}`, `manage_${listing.id}`).row();
+        }
+        
+        await ctx.reply(message, {
+          parse_mode: 'Markdown',
+          reply_markup: keyboard
+        });
+      }
+    }
+    else if (data === 'view_settings') {
+      // Show settings
+      await ctx.reply('⚙️ **Settings**\n\nSettings feature coming soon!', { parse_mode: 'Markdown' });
+    }
+    else if (data === 'help_menu') {
+      // Show help
+      await ctx.reply(
+        `❓ **Exchango Help**\n\n` +
+        `**Available Commands:**\n` +
+        `/start - Initialize your account\n` +
+        `/listings - Browse available listings\n` +
+        `/sell - Create a new listing\n` +
+        `/portfolio - View your listings\n` +
+        `/settings - Manage preferences\n` +
+        `/help - Show this help message\n\n` +
+        `**How to Use:**\n` +
+        `1. Set your Telegram username first\n` +
+        `2. Create listings with /sell\n` +
+        `3. Browse others' listings with /listings\n` +
+        `4. Manage your listings with /portfolio\n\n` +
+        `**Need Help?** Contact support if you have questions!`,
+        { parse_mode: 'Markdown' }
+      );
+    }
+    
     await ctx.answerCallbackQuery();
   } catch (error) {
     console.error('Error handling callback query:', error);
@@ -987,19 +1143,35 @@ bot.on('message', async (ctx) => {
     
     // Handle text messages that might be commands
     if (messageText) {
+      // Check for menu requests
+      if (messageText.toLowerCase().includes('menu') || messageText.toLowerCase().includes('options') || messageText.toLowerCase().includes('main')) {
+        await showMainMenu(ctx, userId);
+        return;
+      }
+      
       // Check if user is trying to start selling
       if (messageText.toLowerCase().includes('sell') || messageText.toLowerCase().includes('create listing')) {
         await ctx.reply(
-          'To create a listing, please use the `/sell` command.\n\n' +
-          'Type `/sell` to start the listing creation process.',
-          { parse_mode: 'Markdown' }
+          'To create a listing, please use the `/sell` command or click the menu button below.',
+          { 
+            reply_markup: new InlineKeyboard()
+              .text('💰 Create Listing', 'sell_listing')
+              .row()
+              .text('📋 Main Menu', 'main_menu')
+          }
         );
         return;
       }
       
-      // Default message for users not in a form flow
+      // Default message with menu for users not in a form flow
       await ctx.reply(
-        'Hi! I\'m the Exchango trading bot. Use /start to begin or /help for available commands.'
+        'Hi! I\'m the Exchango trading bot. Choose an option below or use /help for commands.',
+        {
+          reply_markup: new InlineKeyboard()
+            .text('📋 Main Menu', 'main_menu')
+            .row()
+            .text('❓ Help', 'help_menu')
+        }
       );
     }
   } catch (error) {
@@ -1292,6 +1464,7 @@ async function sendApprovalRequest(listing: any, user: any) {
       `💰 **Price:** $${price} USD\n` +
       `${deliveryEmoji} **Delivery:** ${listing.delivery_type}\n\n` +
       `👤 **Seller:** ${user.display_name || user.username || 'Anonymous'}\n` +
+      `💬 **Contact:** ${user.username ? `@${user.username}` : 'No username set'}\n` +
       `🆔 **Seller ID:** ${user.telegram_id}\n` +
       `📅 **Submitted:** ${new Date(listing.created_at).toLocaleDateString()}\n\n` +
       `🆔 **Listing ID:** ${listing.id}\n\n` +
@@ -1378,6 +1551,41 @@ async function postListingToChannel(listing: any, user: any) {
     }
     
     // Don't throw error - listing creation should still succeed even if channel post fails
+  }
+}
+
+// Show main menu function
+async function showMainMenu(ctx: any, userId: number) {
+  try {
+    const user = await db('users').where('telegram_id', userId).first();
+    const username = user?.username;
+    
+    let menuMessage = `🎯 **Exchango Main Menu**\n\n`;
+    
+    if (username) {
+      menuMessage += `👋 Welcome back, @${username}!\n\n`;
+    } else {
+      menuMessage += `👋 Welcome! You need a username to create listings.\n\n`;
+    }
+    
+    menuMessage += `Choose what you'd like to do:`;
+    
+    const keyboard = new InlineKeyboard()
+      .text('📈 Browse Listings', 'browse_listings')
+      .text('💰 Create Listing', 'sell_listing')
+      .row()
+      .text('📊 My Portfolio', 'view_portfolio')
+      .text('⚙️ Settings', 'view_settings')
+      .row()
+      .text('❓ Help', 'help_menu');
+    
+    await ctx.reply(menuMessage, {
+      reply_markup: keyboard,
+      parse_mode: 'Markdown'
+    });
+  } catch (error) {
+    console.error('Error showing main menu:', error);
+    await ctx.reply('Sorry, there was an error showing the menu. Please try again.');
   }
 }
 
