@@ -1344,19 +1344,22 @@ async function postListingToChannel(listing: any, user: any) {
     };
     const deliveryEmoji = deliveryEmojiMap[listing.delivery_type] || '📦';
     
+    // Escape Markdown special characters in user-provided content
+    const escapeMarkdown = (text: string) => text.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+    
     const message = 
       `🆕 **New Trading Opportunity!**\n\n` +
-      `📝 **${listing.title}**\n\n` +
-      `📋 **Description:**\n${listing.description}\n\n` +
-      `🏷️ **Category:** ${listing.category}\n` +
+      `📝 **${escapeMarkdown(listing.title)}**\n\n` +
+      `📋 **Description:**\n${escapeMarkdown(listing.description)}\n\n` +
+      `🏷️ **Category:** ${escapeMarkdown(listing.category)}\n` +
       `💰 **Price:** $${price} USD\n` +
-      `${deliveryEmoji} **Delivery:** ${listing.delivery_type}\n\n` +
-      `👤 **Seller:** ${user.display_name || user.username || 'Anonymous'}\n` +
+      `${deliveryEmoji} **Delivery:** ${escapeMarkdown(listing.delivery_type)}\n\n` +
+      `👤 **Seller:** ${escapeMarkdown(user.display_name || user.username || 'Anonymous')}\n` +
       `📅 **Posted:** ${new Date(listing.created_at).toLocaleDateString()}\n\n` +
       `🔄 **Status:** Active\n\n` +
-      `💬 **Interested?** Contact the seller: ${user.username ? `@${user.username}` : 'Contact via bot'}\n` +
-      `📊 **View All Listings:** @${process.env.BOT_USERNAME || 'your_bot'}\n\n` +
-      `#Exchango #Trading #${listing.category.replace(/\s+/g, '')}`;
+      `💬 **Interested?** Contact the seller: ${user.username ? `@${escapeMarkdown(user.username)}` : 'Contact via bot'}\n` +
+      `📊 **View All Listings:** @${(process.env.BOT_USERNAME || 'your_bot').replace('@', '')}\n\n` +
+      `#Exchango #Trading #${escapeMarkdown(listing.category.replace(/\s+/g, ''))}`;
     
     const result = await bot.api.sendMessage(channelId, message, { 
       parse_mode: 'Markdown',
