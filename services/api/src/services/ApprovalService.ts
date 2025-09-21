@@ -39,15 +39,18 @@ export class ApprovalService {
       };
       const deliveryEmoji = deliveryEmojiMap[listing.delivery_type] || '📦';
 
+      // Escape Markdown special characters in user-provided content
+      const escapeMarkdown = (text: string) => text.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+      
       const message = 
         `🔍 **New Listing Awaiting Approval**\n\n` +
-        `📝 **Title:** ${listing.title}\n\n` +
-        `📋 **Description:**\n${listing.description}\n\n` +
-        `🏷️ **Category:** ${listing.category}\n` +
+        `📝 **Title:** ${escapeMarkdown(listing.title)}\n\n` +
+        `📋 **Description:**\n${escapeMarkdown(listing.description)}\n\n` +
+        `🏷️ **Category:** ${escapeMarkdown(listing.category)}\n` +
         `💰 **Price:** $${price} USD\n` +
-        `${deliveryEmoji} **Delivery:** ${listing.delivery_type}\n\n` +
-        `👤 **Seller:** ${user.display_name || user.username || 'Anonymous'}\n` +
-        `💬 **Contact:** ${user.username ? `@${user.username}` : 'No username set'}\n` +
+        `${deliveryEmoji} **Delivery:** ${escapeMarkdown(listing.delivery_type)}\n\n` +
+        `👤 **Seller:** ${escapeMarkdown(user.display_name || user.username || 'Anonymous')}\n` +
+        `💬 **Contact:** ${user.username ? `@${escapeMarkdown(user.username)}` : 'No username set'}\n` +
         `🆔 **Seller ID:** ${user.telegram_id}\n` +
         `📅 **Submitted:** ${new Date(listing.created_at).toLocaleDateString()}\n\n` +
         `🆔 **Listing ID:** ${listing.id}\n\n` +
@@ -81,6 +84,9 @@ export class ApprovalService {
     try {
       console.log(`Processing ${isApproved ? 'approval' : 'rejection'} for listing ${listingId}`);
       
+      // Escape Markdown helper function
+      const escapeMarkdown = (text: string) => text.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+      
       const approverIds = this.getApproverUserIds();
       if (!approverIds.includes(approverId)) {
         console.log(`User ${approverId} not authorized to approve listings`);
@@ -101,7 +107,7 @@ export class ApprovalService {
         // Notify seller of approval
         await this.bot.api.sendMessage(seller.telegram_id, 
           `🎉 **Your listing has been approved!**\n\n` +
-          `📝 **${listing.title}**\n\n` +
+          `📝 **${escapeMarkdown(listing.title)}**\n\n` +
           `Your subscription listing is now live on our trading channel!\n\n` +
           `Use /portfolio to view your listings.`,
           { parse_mode: 'Markdown' }
@@ -109,13 +115,13 @@ export class ApprovalService {
         
         return { 
           success: true, 
-          message: `✅ **Listing Approved and Posted!**\n\n📝 **${listing.title}**\n👤 **Seller:** ${seller.display_name || seller.username}\n\nThe listing has been posted to the trading channel.`
+          message: `✅ **Listing Approved and Posted!**\n\n📝 **${escapeMarkdown(listing.title)}**\n👤 **Seller:** ${escapeMarkdown(seller.display_name || seller.username || 'Anonymous')}\n\nThe listing has been posted to the trading channel.`
         };
       } else {
         // Notify seller of rejection
         await this.bot.api.sendMessage(seller.telegram_id, 
           `❌ **Your listing was not approved**\n\n` +
-          `📝 **${listing.title}**\n\n` +
+          `📝 **${escapeMarkdown(listing.title)}**\n\n` +
           `Unfortunately, your listing did not meet our quality standards or community guidelines.\n\n` +
           `Please review our guidelines and feel free to submit a new listing.\n\n` +
           `Use /sell to create a new listing.`,
@@ -124,7 +130,7 @@ export class ApprovalService {
         
         return { 
           success: true, 
-          message: `❌ **Listing Rejected**\n\n📝 **${listing.title}**\n👤 **Seller:** ${seller.display_name || seller.username}\n\nThe seller has been notified of the rejection.`
+          message: `❌ **Listing Rejected**\n\n📝 **${escapeMarkdown(listing.title)}**\n👤 **Seller:** ${escapeMarkdown(seller.display_name || seller.username || 'Anonymous')}\n\nThe seller has been notified of the rejection.`
         };
       }
     } catch (error) {
