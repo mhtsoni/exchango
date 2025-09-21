@@ -475,7 +475,7 @@ bot.on('callback_query:data', async (ctx) => {
         );
       }
     }
-    
+    }    
     // Handle pricing selection
     else if (data.startsWith('price_')) {
       const userState = getUserState(userId);
