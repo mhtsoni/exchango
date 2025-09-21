@@ -40,9 +40,7 @@ bot.command('start', async (ctx) => {
       `• Buy shared access at a fraction of full price\n` +
       `• Safe, verified, and easy to use\n\n`;
     
-    if (username) {
-      welcomeMessage += `✅ **You're all set!** Your username (@${username}) lets buyers contact you directly.\n\n`;
-    } else {
+    if (!username) {
       welcomeMessage += `⚠️ **Quick setup needed:** Set your Telegram username so buyers can contact you!\n` +
         `Go to Telegram Settings → Username to set one.\n\n`;
     }
@@ -54,6 +52,7 @@ bot.command('start', async (ctx) => {
       `💡 **Browse available shares on our channel!**`;
     
     await ctx.reply(welcomeMessage, {
+      parse_mode: 'Markdown',
       reply_markup: new InlineKeyboard()
         .text('📋 Main Menu', 'main_menu')
         .row()
