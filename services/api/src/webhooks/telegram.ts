@@ -334,7 +334,8 @@ bot.command('settings', async (ctx) => {
       `• Update profile information\n` +
       `• Change notification settings\n` +
       `• Privacy preferences\n\n` +
-      `Settings management coming soon! For now, your basic profile is set up and ready to trade.`
+      `Settings management coming soon! For now, your basic profile is set up and ready to trade.`,
+      { parse_mode: 'Markdown' }
     );
   } catch (error) {
     console.error('Error handling /settings command:', error);
