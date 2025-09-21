@@ -66,18 +66,17 @@ bot.command('start', async (ctx) => {
     let welcomeMessage = `🎉 Welcome to Exchango, ${displayName || username || 'trader'}!\n\n`;
     
     if (username) {
-      welcomeMessage += `✅ **Username:** @${username} - Ready to create listings!\n\n`;
+      welcomeMessage += `✅ Ready to create listings!\n\n`;
     } else {
       welcomeMessage += `⚠️ **Important:** You need a Telegram username to create listings!\n` +
         `Buyers must be able to contact you directly. Go to Telegram Settings → Username to set one.\n\n`;
     }
     
     welcomeMessage += `I'm your personal trading assistant. Here's what you can do:\n\n` +
-      `📈 /listings - Browse available trading opportunities\n` +
       `💰 /sell - List your own trading opportunity\n` +
       `📊 /portfolio - View your trading history\n` +
       `⚙️ /settings - Manage your preferences\n\n` +
-      `Ready to start trading? Use /listings to see what's available!`;
+      `Ready to start trading? Browse listings on our channel!`;
     
     await ctx.reply(welcomeMessage, {
       reply_markup: new InlineKeyboard()
@@ -335,8 +334,7 @@ bot.command('settings', async (ctx) => {
       `• Update profile information\n` +
       `• Change notification settings\n` +
       `• Privacy preferences\n\n` +
-      `*Settings management coming soon! For now, your basic profile is set up and ready to trade.*`,
-      { parse_mode: 'Markdown' }
+      `Settings management coming soon! For now, your basic profile is set up and ready to trade.`
     );
   } catch (error) {
     console.error('Error handling /settings command:', error);
@@ -395,14 +393,13 @@ bot.command('help', async (ctx) => {
     `**Available Commands:**\n` +
     `/start - Welcome message and setup\n` +
     `/menu - Show main menu with options\n` +
-    `/listings - Browse active trading opportunities\n` +
     `/sell - Create a new listing\n` +
     `/portfolio - View your trading history\n` +
     `/settings - Manage your preferences\n` +
     `/help - Show this help message\n\n` +
     `**Getting Started:**\n` +
     `1. Use /start to begin\n` +
-    `2. Browse /listings to find opportunities\n` +
+    `2. Browse listings on our trading channel\n` +
     `3. Use /sell to create your own listings\n` +
     `4. Check /portfolio for your activity\n\n` +
     `Need support? Contact the admin.`,
@@ -970,29 +967,6 @@ bot.on('callback_query:data', async (ctx) => {
     else if (data === 'main_menu') {
       await showMainMenu(ctx, userId);
     }
-    else if (data === 'browse_listings') {
-      // Trigger listings command
-      await ctx.reply('Loading available listings...');
-      // We'll simulate the listings command here
-      const listings = await db('listings')
-        .where('status', 'active')
-        .orderBy('created_at', 'desc')
-        .limit(10);
-      
-      if (listings.length === 0) {
-        await ctx.reply('No active listings found. Be the first to create one!');
-      } else {
-        let message = '📈 **Available Listings:**\n\n';
-        for (const listing of listings) {
-          const seller = await db('users').where('id', listing.seller_id).first();
-          const price = (listing.price_cents / 100).toFixed(2);
-          message += `📝 **${listing.title}**\n`;
-          message += `💰 $${price} | 🏷️ ${listing.category}\n`;
-          message += `👤 ${seller?.display_name || seller?.username || 'Anonymous'}\n\n`;
-        }
-        await ctx.reply(message, { parse_mode: 'Markdown' });
-      }
-    }
     else if (data === 'sell_listing') {
       // Trigger sell command
       await ctx.reply('Starting listing creation...');
@@ -1090,7 +1064,6 @@ bot.on('callback_query:data', async (ctx) => {
         `❓ **Exchango Help**\n\n` +
         `**Available Commands:**\n` +
         `/start - Initialize your account\n` +
-        `/listings - Browse available listings\n` +
         `/sell - Create a new listing\n` +
         `/portfolio - View your listings\n` +
         `/settings - Manage preferences\n` +
@@ -1098,7 +1071,7 @@ bot.on('callback_query:data', async (ctx) => {
         `**How to Use:**\n` +
         `1. Set your Telegram username first\n` +
         `2. Create listings with /sell\n` +
-        `3. Browse others' listings with /listings\n` +
+        `3. Browse others' listings on our trading channel\n` +
         `4. Manage your listings with /portfolio\n\n` +
         `**Need Help?** Contact support if you have questions!`,
         { parse_mode: 'Markdown' }
@@ -1571,12 +1544,10 @@ async function showMainMenu(ctx: any, userId: number) {
     menuMessage += `Choose what you'd like to do:`;
     
     const keyboard = new InlineKeyboard()
-      .text('📈 Browse Listings', 'browse_listings')
       .text('💰 Create Listing', 'sell_listing')
-      .row()
       .text('📊 My Portfolio', 'view_portfolio')
-      .text('⚙️ Settings', 'view_settings')
       .row()
+      .text('⚙️ Settings', 'view_settings')
       .text('❓ Help', 'help_menu');
     
     await ctx.reply(menuMessage, {
