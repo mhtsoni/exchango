@@ -3,6 +3,7 @@ import { Bot } from 'grammy';
 import { InlineKeyboard } from 'grammy';
 import { Listing } from './ListingService';
 import { User } from './UserService';
+import { ListingService } from './ListingService';
 
 export class ApprovalService {
   private bot: Bot;
@@ -101,8 +102,11 @@ export class ApprovalService {
       const seller = await db('users').where('id', listing.seller_id).first();
       
       if (isApproved) {
-        // Post to channel (this would be handled by the listing service)
+        // Post to channel using the listing service
         console.log(`Approving listing ${listingId}, posting to channel...`);
+        
+        const listingService = new ListingService(this.bot);
+        await listingService.postListingToChannel(listing, seller);
         
         // Notify seller of approval
         await this.bot.api.sendMessage(seller.telegram_id, 
