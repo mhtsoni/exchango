@@ -560,13 +560,104 @@ export class CallbackHandler {
   }
 
   private async handleSellListing(ctx: any, userId: number): Promise<void> {
-    // This will be handled by the sell command handler
-    await ctx.reply('Sell listing functionality will be implemented here');
+    // Check if user has a username before starting the sell flow
+    const user = await UserService.getUserByTelegramId(userId);
+    if (!user?.username) {
+      await ctx.editMessageText(
+        `⚠️ **Username Required to Share Subscriptions!**\n\n` +
+        `You need to set a Telegram username before you can share subscriptions.\n\n` +
+        `**Why?** Buyers need to contact you directly!\n\n` +
+        `**Steps to set username:**\n` +
+        `1. Go to Telegram Settings\n` +
+        `2. Tap on "Username"\n` +
+        `3. Set your desired username (e.g., @yourname)\n` +
+        `4. Use /start to refresh your profile\n\n` +
+        `Once you've set your username, come back and try sharing again!`,
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+    
+    // Initialize user state for listing creation
+    UserStateService.setUserState(userId, {
+      step: 'category',
+      listingData: {}
+    });
+    
+    const keyboard = new InlineKeyboard()
+      .text('🎬 Streaming Services', 'category_streaming')
+      .text('🎵 Music & Audio', 'category_music').row()
+      .text('💑 Dating Apps', 'category_dating')
+      .text('📱 Software & Apps', 'category_software').row()
+      .text('🎫 Events & Tickets', 'category_events')
+      .text('☁️ Cloud Storage', 'category_storage').row()
+      .text('📚 Education', 'category_education')
+      .text('🎮 Gaming', 'category_gaming').row()
+      .text('❌ Cancel', 'cancel_sell');
+    
+    await ctx.editMessageText(
+      `🚀 **Share Your Subscription or Sell Tickets**\n\n` +
+      `Choose the category that best fits what you're sharing:`,
+      { 
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
+      }
+    );
   }
 
   private async handleViewPortfolio(ctx: any, userId: number): Promise<void> {
-    // This will be handled by the portfolio command handler
-    await ctx.reply('Portfolio functionality will be implemented here');
+    try {
+      const user = await UserService.getUserByTelegramId(userId);
+      if (!user) {
+        await ctx.editMessageText('Please use /start first to create your account.');
+        return;
+      }
+      
+      const listings = await this.listingService.getListingsBySeller(user.id);
+      
+      if (listings.length === 0) {
+        await ctx.editMessageText('You haven\'t shared any subscriptions yet. Use the Share Subscription button to get started!', {
+          reply_markup: new InlineKeyboard()
+            .text('💰 Share Subscription', 'sell_listing')
+            .row()
+            .text('🏠 Back to Menu', 'main_menu')
+        });
+      } else {
+        let message = '📊 **Your Shared Subscriptions**\n\n';
+        const statusEmojiMap: { [key: string]: string } = {
+          'pending_approval': '⏳',
+          'active': '✅',
+          'sold': '💰',
+          'rejected': '❌',
+          'removed': '🗑️'
+        };
+        
+        for (const listing of listings) {
+          const statusEmoji = statusEmojiMap[listing.status] || '❓';
+          const price = (listing.price_cents / 100).toFixed(2);
+          message += `${statusEmoji} **${listing.title}**\n`;
+          message += `💰 $${price} | 🏷️ ${listing.category}\n`;
+          message += `📅 ${new Date(listing.created_at).toLocaleDateString()}\n\n`;
+        }
+        
+        message += 'Click on a listing to manage it:';
+        
+        const keyboard = new InlineKeyboard();
+        for (const listing of listings) {
+          keyboard.text(`${listing.title}`, `manage_${listing.id}`).row();
+        }
+        
+        keyboard.text('💰 Share New Subscription', 'sell_listing');
+        
+        await ctx.editMessageText(message, {
+          parse_mode: 'Markdown',
+          reply_markup: keyboard
+        });
+      }
+    } catch (error) {
+      console.error('Error handling view portfolio:', error);
+      await ctx.editMessageText('Sorry, there was an error loading your portfolio. Please try again.');
+    }
   }
 
   private async handleViewSettings(ctx: any): Promise<void> {

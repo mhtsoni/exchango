@@ -45,11 +45,7 @@ bot.command('start', async (ctx) => {
         `Go to Telegram Settings → Username to set one.\n\n`;
     }
     
-    welcomeMessage += `**Get started:**\n` +
-      `💰 /sell - Share your subscription or sell tickets\n` +
-      `📊 /portfolio - Manage your shared subscriptions\n` +
-      `⚙️ /settings - Your account settings\n\n` +
-      `💡 **Browse available shares on our channel!**`;
+    welcomeMessage += `💡 **Browse available shares on our channel!**`;
     
     await ctx.reply(welcomeMessage, {
       parse_mode: 'Markdown',
