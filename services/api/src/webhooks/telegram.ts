@@ -994,7 +994,7 @@ bot.on('callback_query:data', async (ctx) => {
         // Start the sell flow
         setUserState(userId, {
           step: 'category',
-          data: {}
+          listingData: {}
         });
         
         await ctx.editMessageText(
