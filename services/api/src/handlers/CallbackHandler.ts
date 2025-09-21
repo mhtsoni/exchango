@@ -268,8 +268,15 @@ export class CallbackHandler {
     UserStateService.clearUserState(userId);
     await ctx.editMessageText(
       '❌ **Cancelled**\n\n' +
-      'Subscription creation cancelled. Use /sell to start again.',
-      { parse_mode: 'Markdown' }
+      'Subscription creation cancelled.',
+      { 
+        parse_mode: 'Markdown',
+        reply_markup: new InlineKeyboard()
+          .text('💰 Share Subscription', 'sell_listing')
+          .text('📊 My Shares', 'view_portfolio').row()
+          .text('⚙️ Settings', 'view_settings')
+          .text('❓ Help', 'help_menu')
+      }
     );
   }
 
@@ -354,9 +361,14 @@ export class CallbackHandler {
       await ctx.editMessageText(
         `💰 **Listing Marked as Sold!**\n\n` +
         `📝 **${listing.title}**\n\n` +
-        `Your listing has been marked as sold and removed from the trading channel.\n\n` +
-        `Use /portfolio to view your updated listings.`,
-        { parse_mode: 'Markdown' }
+        `Your listing has been marked as sold and removed from the trading channel.`,
+        { 
+          parse_mode: 'Markdown',
+          reply_markup: new InlineKeyboard()
+            .text('📊 My Shares', 'view_portfolio')
+            .text('💰 Share New', 'sell_listing').row()
+            .text('🏠 Main Menu', 'main_menu')
+        }
       );
       
       await ctx.answerCallbackQuery('✅ Listing marked as sold!');
@@ -388,9 +400,14 @@ export class CallbackHandler {
       await ctx.editMessageText(
         `🗑️ **Listing Deleted!**\n\n` +
         `📝 **${listing.title}**\n\n` +
-        `Your listing has been deleted and removed from the trading channel.\n\n` +
-        `Use /portfolio to view your updated listings.`,
-        { parse_mode: 'Markdown' }
+        `Your listing has been deleted and removed from the trading channel.`,
+        { 
+          parse_mode: 'Markdown',
+          reply_markup: new InlineKeyboard()
+            .text('📊 My Shares', 'view_portfolio')
+            .text('💰 Share New', 'sell_listing').row()
+            .text('🏠 Main Menu', 'main_menu')
+        }
       );
       
       await ctx.answerCallbackQuery('✅ Listing deleted!');
@@ -524,9 +541,14 @@ export class CallbackHandler {
       await ctx.editMessageText(
         `🗑️ **Image Removed!**\n\n` +
         `📝 **${listing.title}**\n\n` +
-        `The image has been removed from your listing.\n\n` +
-        `Use /portfolio to manage your listings again.`,
-        { parse_mode: 'Markdown' }
+        `The image has been removed from your listing.`,
+        { 
+          parse_mode: 'Markdown',
+          reply_markup: new InlineKeyboard()
+            .text('📊 My Shares', 'view_portfolio')
+            .text('💰 Share New', 'sell_listing').row()
+            .text('🏠 Main Menu', 'main_menu')
+        }
       );
       
       await ctx.answerCallbackQuery('✅ Image removed!');
@@ -541,16 +563,28 @@ export class CallbackHandler {
     UserStateService.clearUserState(userId);
     await ctx.editMessageText(
       '❌ **Edit Cancelled**\n\n' +
-      'Listing editing cancelled. Use /portfolio to manage your listings again.',
-      { parse_mode: 'Markdown' }
+      'Listing editing cancelled.',
+      { 
+        parse_mode: 'Markdown',
+        reply_markup: new InlineKeyboard()
+          .text('📊 My Shares', 'view_portfolio')
+          .text('💰 Share New', 'sell_listing').row()
+          .text('🏠 Main Menu', 'main_menu')
+      }
     );
   }
 
   private async handleCancelManage(ctx: any): Promise<void> {
     await ctx.editMessageText(
       '❌ **Cancelled**\n\n' +
-      'Listing management cancelled. Use /portfolio to view your listings again.',
-      { parse_mode: 'Markdown' }
+      'Listing management cancelled.',
+      { 
+        parse_mode: 'Markdown',
+        reply_markup: new InlineKeyboard()
+          .text('📊 My Shares', 'view_portfolio')
+          .text('💰 Share New', 'sell_listing').row()
+          .text('🏠 Main Menu', 'main_menu')
+      }
     );
   }
 
