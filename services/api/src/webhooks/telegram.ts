@@ -54,8 +54,9 @@ bot.command('start', async (ctx) => {
     await ctx.reply(welcomeMessage, {
       parse_mode: 'Markdown',
       reply_markup: new InlineKeyboard()
-        .text('📋 Main Menu', 'main_menu')
-        .row()
+        .text('💰 Share Subscription', 'sell_listing')
+        .text('📊 My Shares', 'view_portfolio').row()
+        .text('⚙️ Settings', 'view_settings')
         .text('❓ Help', 'help_menu'),
       reply_to_message_id: ctx.message?.message_id
     });
@@ -335,12 +336,9 @@ bot.on('message', async (ctx) => {
         'Hi! I\'m the SubShare bot - your subscription sharing assistant. Choose an option below:',
         {
           reply_markup: new InlineKeyboard()
-            .text('📋 Main Menu', 'main_menu')
-            .text('💰 Share', 'sell_listing')
-            .row()
-            .text('📊 Portfolio', 'view_portfolio')
+            .text('💰 Share Subscription', 'sell_listing')
+            .text('📊 My Shares', 'view_portfolio').row()
             .text('⚙️ Settings', 'view_settings')
-            .row()
             .text('❓ Help', 'help_menu')
         }
       );
