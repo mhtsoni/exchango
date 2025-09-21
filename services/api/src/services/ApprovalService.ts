@@ -112,9 +112,21 @@ export class ApprovalService {
         await this.bot.api.sendMessage(seller.telegram_id, 
           `🎉 **Your listing has been approved!**\n\n` +
           `📝 **${escapeMarkdown(listing.title)}**\n\n` +
-          `Your subscription listing is now live on our trading channel!\n\n` +
-          `Use /portfolio to view your listings.`,
-          { parse_mode: 'Markdown' }
+          `Your subscription listing is now live on our trading channel!`,
+          { 
+            parse_mode: 'Markdown',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: '📊 My Shares', callback_data: 'view_portfolio' },
+                  { text: '💰 Share New', callback_data: 'sell_listing' }
+                ],
+                [
+                  { text: '🏠 Main Menu', callback_data: 'main_menu' }
+                ]
+              ]
+            }
+          }
         );
         
         return { 
@@ -127,9 +139,21 @@ export class ApprovalService {
           `❌ **Your listing was not approved**\n\n` +
           `📝 **${escapeMarkdown(listing.title)}**\n\n` +
           `Unfortunately, your listing did not meet our quality standards or community guidelines.\n\n` +
-          `Please review our guidelines and feel free to submit a new listing.\n\n` +
-          `Use /sell to create a new listing.`,
-          { parse_mode: 'Markdown' }
+          `Please review our guidelines and feel free to submit a new listing.`,
+          { 
+            parse_mode: 'Markdown',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: '💰 Share New', callback_data: 'sell_listing' },
+                  { text: '📊 My Shares', callback_data: 'view_portfolio' }
+                ],
+                [
+                  { text: '🏠 Main Menu', callback_data: 'main_menu' }
+                ]
+              ]
+            }
+          }
         );
         
         return { 
