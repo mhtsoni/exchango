@@ -12,7 +12,9 @@ import { initializeDatabase } from './database';
 
 const app = express();
 
-// Trigger Railway deployment
+// Trust proxy for rate limiting (required for Railway deployment)
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 app.use(cors());

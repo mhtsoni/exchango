@@ -3,7 +3,7 @@ import { Bot } from 'grammy';
 
 export interface Listing {
   id: string;
-  seller_id: number;
+  seller_id: string;
   title: string;
   description: string;
   category: string;
@@ -23,7 +23,7 @@ export class ListingService {
     this.bot = bot;
   }
 
-  async createListing(sellerId: number, listingData: any): Promise<Listing> {
+  async createListing(sellerId: string, listingData: any): Promise<Listing> {
     const listing = await db('listings').insert({
       seller_id: sellerId,
       title: listingData.title,
@@ -38,7 +38,7 @@ export class ListingService {
     return listing[0];
   }
 
-  async getListingsBySeller(sellerId: number): Promise<Listing[]> {
+  async getListingsBySeller(sellerId: string): Promise<Listing[]> {
     return await db('listings')
       .where('seller_id', sellerId)
       .orderBy('created_at', 'desc');
@@ -67,7 +67,7 @@ export class ListingService {
     return await db('listings').where('id', listingId).first();
   }
 
-  async verifyListingOwnership(listingId: string, sellerId: number): Promise<Listing | null> {
+  async verifyListingOwnership(listingId: string, sellerId: string): Promise<Listing | null> {
     return await db('listings')
       .where('id', listingId)
       .where('seller_id', sellerId)
