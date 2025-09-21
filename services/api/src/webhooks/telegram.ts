@@ -30,20 +30,28 @@ bot.command('start', async (ctx) => {
       lastName: ctx.from?.last_name
     });
     
-    let welcomeMessage = `🎉 Welcome to Exchango, ${displayName || username || 'trader'}!\n\n`;
+    let welcomeMessage = `🎉 Welcome to **SubShare**, ${displayName || username || 'friend'}!\n\n`;
+    
+    welcomeMessage += `**The smart way to share subscriptions & save money** 💰\n\n`;
+    
+    welcomeMessage += `**What is SubShare?**\n` +
+      `• Share your Netflix, Spotify, Bumble, etc. subscriptions\n` +
+      `• Sell concert tickets, event passes you can't use\n` +
+      `• Buy shared access at a fraction of full price\n` +
+      `• Safe, verified, and easy to use\n\n`;
     
     if (username) {
-      welcomeMessage += `✅ Ready to create listings!\n\n`;
+      welcomeMessage += `✅ **You're all set!** Your username (@${username}) lets buyers contact you directly.\n\n`;
     } else {
-      welcomeMessage += `⚠️ **Important:** You need a Telegram username to create listings!\n` +
-        `Buyers must be able to contact you directly. Go to Telegram Settings → Username to set one.\n\n`;
+      welcomeMessage += `⚠️ **Quick setup needed:** Set your Telegram username so buyers can contact you!\n` +
+        `Go to Telegram Settings → Username to set one.\n\n`;
     }
     
-    welcomeMessage += `I'm your personal trading assistant. Here's what you can do:\n\n` +
-      `💰 /sell - List your own trading opportunity\n` +
-      `📊 /portfolio - View your trading history\n` +
-      `⚙️ /settings - Manage your preferences\n\n` +
-      `Ready to start trading? Browse listings on our channel!`;
+    welcomeMessage += `**Get started:**\n` +
+      `💰 /sell - Share your subscription or sell tickets\n` +
+      `📊 /portfolio - Manage your shared subscriptions\n` +
+      `⚙️ /settings - Your account settings\n\n` +
+      `💡 **Browse available shares on our channel!**`;
     
     await ctx.reply(welcomeMessage, {
       reply_markup: new InlineKeyboard()
@@ -96,17 +104,19 @@ bot.command('sell', async (ctx) => {
     });
     
     const keyboard = new InlineKeyboard()
-      .text('📊 Trading Signals', 'category_trading_signals')
-      .text('🤖 Trading Bots', 'category_trading_bots').row()
-      .text('📚 Educational Content', 'category_education')
-      .text('🔧 Tools & Software', 'category_tools').row()
-      .text('📈 Market Analysis', 'category_analysis')
-      .text('🎯 Investment Strategies', 'category_strategies').row()
+      .text('🎬 Streaming Services', 'category_streaming')
+      .text('🎵 Music & Audio', 'category_music').row()
+      .text('💑 Dating Apps', 'category_dating')
+      .text('📱 Software & Apps', 'category_software').row()
+      .text('🎫 Events & Tickets', 'category_events')
+      .text('☁️ Cloud Storage', 'category_storage').row()
+      .text('📚 Education', 'category_education')
+      .text('🎮 Gaming', 'category_gaming').row()
       .text('❌ Cancel', 'cancel_sell');
     
     await ctx.reply(
-      `🚀 **Create Your Digital Subscription**\n\n` +
-      `Choose the category that best fits your offering:`,
+      `🚀 **Share Your Subscription or Sell Tickets**\n\n` +
+      `Choose the category that best fits what you're sharing:`,
       { 
         parse_mode: 'Markdown',
         reply_markup: keyboard
@@ -230,19 +240,24 @@ bot.command('menu', async (ctx) => {
 
 bot.command('help', async (ctx) => {
   await ctx.reply(
-    `🤖 **Exchango Bot Help**\n\n` +
+    `🤖 **SubShare Bot Help**\n\n` +
     `**Available Commands:**\n` +
     `/start - Welcome message and setup\n` +
     `/menu - Show main menu with options\n` +
-    `/sell - Create a new listing\n` +
-    `/portfolio - View your trading history\n` +
+    `/sell - Share your subscription or sell tickets\n` +
+    `/portfolio - View your shared subscriptions\n` +
     `/settings - Manage your preferences\n` +
     `/help - Show this help message\n\n` +
-    `**Getting Started:**\n` +
-    `1. Use /start to begin\n` +
-    `2. Browse listings on our trading channel\n` +
-    `3. Use /sell to create your own listings\n` +
-    `4. Check /portfolio for your activity\n\n` +
+    `**How SubShare Works:**\n` +
+    `1. Use /start to get started\n` +
+    `2. Browse available shares on our channel\n` +
+    `3. Use /sell to share your subscriptions\n` +
+    `4. Manage your shares with /portfolio\n\n` +
+    `**Examples of what you can share:**\n` +
+    `• Netflix, Spotify, Disney+ subscriptions\n` +
+    `• Bumble, Tinder premium accounts\n` +
+    `• Concert tickets, event passes\n` +
+    `• Software licenses, cloud storage\n\n` +
     `Need support? Contact the admin.`,
     { parse_mode: 'Markdown' }
   );
@@ -318,11 +333,11 @@ bot.on('message', async (ctx) => {
       
       // Default message with menu for users not in a form flow
       await ctx.reply(
-        'Hi! I\'m the Exchango trading bot. Choose an option below:',
+        'Hi! I\'m the SubShare bot - your subscription sharing assistant. Choose an option below:',
         {
           reply_markup: new InlineKeyboard()
             .text('📋 Main Menu', 'main_menu')
-            .text('💰 Sell', 'sell_listing')
+            .text('💰 Share', 'sell_listing')
             .row()
             .text('📊 Portfolio', 'view_portfolio')
             .text('⚙️ Settings', 'view_settings')
@@ -465,20 +480,20 @@ async function showMainMenu(ctx: any, userId: number) {
     const user = await UserService.getUserByTelegramId(userId);
     const username = user?.username;
     
-    let menuMessage = `🎯 **Exchango Main Menu**\n\n`;
+    let menuMessage = `🎯 **SubShare Main Menu**\n\n`;
     
     if (username) {
       // Escape the @ symbol for Markdown
       menuMessage += `👋 Welcome back, @${username.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}!\n\n`;
     } else {
-      menuMessage += `👋 Welcome! You need a username to create listings.\n\n`;
+      menuMessage += `👋 Welcome! You need a username to share subscriptions.\n\n`;
     }
     
-    menuMessage += `Choose what you'd like to do:`;
+    menuMessage += `**Choose what you'd like to do:**`;
     
     const keyboard = new InlineKeyboard()
-      .text('💰 Create Listing', 'sell_listing')
-      .text('📊 My Portfolio', 'view_portfolio')
+      .text('💰 Share Subscription', 'sell_listing')
+      .text('📊 My Shares', 'view_portfolio')
       .row()
       .text('⚙️ Settings', 'view_settings')
       .text('❓ Help', 'help_menu')

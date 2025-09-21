@@ -219,17 +219,19 @@ export class CallbackHandler {
 
   private async handleBackToCategory(ctx: any): Promise<void> {
     const keyboard = new InlineKeyboard()
-      .text('📊 Trading Signals', 'category_trading_signals')
-      .text('🤖 Trading Bots', 'category_trading_bots').row()
-      .text('📚 Educational Content', 'category_education')
-      .text('🔧 Tools & Software', 'category_tools').row()
-      .text('📈 Market Analysis', 'category_analysis')
-      .text('🎯 Investment Strategies', 'category_strategies').row()
+      .text('🎬 Streaming Services', 'category_streaming')
+      .text('🎵 Music & Audio', 'category_music').row()
+      .text('💑 Dating Apps', 'category_dating')
+      .text('📱 Software & Apps', 'category_software').row()
+      .text('🎫 Events & Tickets', 'category_events')
+      .text('☁️ Cloud Storage', 'category_storage').row()
+      .text('📚 Education', 'category_education')
+      .text('🎮 Gaming', 'category_gaming').row()
       .text('❌ Cancel', 'cancel_sell');
     
     await ctx.editMessageText(
-      `🚀 **Create Your Digital Subscription**\n\n` +
-      `Choose the category that best fits your offering:`,
+      `🚀 **Share Your Subscription or Sell Tickets**\n\n` +
+      `Choose the category that best fits what you're sharing:`,
       {
         parse_mode: 'Markdown',
         reply_markup: keyboard
