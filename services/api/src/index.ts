@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import bodyParser from 'body-parser';
+const bodyParser = require('body-parser');
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';

@@ -1,8 +1,8 @@
-import express from 'express';
+import express, { Router } from 'express';
 import db from '../database';
 import axios from 'axios';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Create listing
 router.post('/', async (req, res) => {

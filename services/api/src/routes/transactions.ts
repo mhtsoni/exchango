@@ -1,7 +1,7 @@
-import express from 'express';
+import express, { Router } from 'express';
 import db from '../database';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Mark listing as sold (simplified - no payment processing)
 router.post('/:id/sold', async (req, res) => {
