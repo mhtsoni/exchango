@@ -54,15 +54,20 @@ bot.command('start', async (ctx) => {
       });
     }
     
-    await ctx.reply(
-      `🎉 Welcome to Exchango, ${displayName || username || 'trader'}!\n\n` +
-      `I'm your personal trading assistant. Here's what you can do:\n\n` +
+    let welcomeMessage = `🎉 Welcome to Exchango, ${displayName || username || 'trader'}!\n\n`;
+    
+    if (!username) {
+      welcomeMessage += `💡 **Tip:** Set a Telegram username (@username) in your profile to make it easier for buyers to contact you directly!\n\n`;
+    }
+    
+    welcomeMessage += `I'm your personal trading assistant. Here's what you can do:\n\n` +
       `📈 /listings - Browse available trading opportunities\n` +
       `💰 /sell - List your own trading opportunity\n` +
       `📊 /portfolio - View your trading history\n` +
       `⚙️ /settings - Manage your preferences\n\n` +
-      `Ready to start trading? Use /listings to see what's available!`
-    );
+      `Ready to start trading? Use /listings to see what's available!`;
+    
+    await ctx.reply(welcomeMessage, { parse_mode: 'Markdown' });
   } catch (error) {
     console.error('Error handling /start command:', error);
     await ctx.reply('Sorry, there was an error processing your request. Please try again later.');
@@ -1170,7 +1175,7 @@ async function postListingToChannel(listing: any, user: any) {
       `👤 **Seller:** ${user.display_name || user.username || 'Anonymous'}\n` +
       `📅 **Posted:** ${new Date(listing.created_at).toLocaleDateString()}\n\n` +
       `🔄 **Status:** Active\n\n` +
-      `💬 **Interested?** Contact the seller: ${user.username ? `@${user.username}` : (user.display_name || 'Anonymous')}\n` +
+      `💬 **Interested?** Contact the seller: ${user.username ? `@${user.username}` : 'Contact via bot'}\n` +
       `📊 **View All Listings:** @${process.env.BOT_USERNAME || 'your_bot'}\n\n` +
       `#Exchango #Trading #${listing.category.replace(/\s+/g, '')}`;
     
