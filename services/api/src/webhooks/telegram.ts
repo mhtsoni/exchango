@@ -121,6 +121,8 @@ bot.command('sell', async (ctx) => {
     const userId = ctx.from?.id;
     if (!userId) return;
     
+    console.log(`/sell command called by user ${userId}`);
+    
     // Check if user has username before starting sell flow
     const user = await db('users').where('telegram_id', userId).first();
     if (!user) {
@@ -937,8 +939,19 @@ bot.on('message', async (ctx) => {
       return;
     }
     
-    // Default message for users not in a form flow
+    // Handle text messages that might be commands
     if (messageText) {
+      // Check if user is trying to start selling
+      if (messageText.toLowerCase().includes('sell') || messageText.toLowerCase().includes('create listing')) {
+        await ctx.reply(
+          'To create a listing, please use the `/sell` command.\n\n' +
+          'Type `/sell` to start the listing creation process.',
+          { parse_mode: 'Markdown' }
+        );
+        return;
+      }
+      
+      // Default message for users not in a form flow
       await ctx.reply(
         'Hi! I\'m the Exchango trading bot. Use /start to begin or /help for available commands.'
       );
