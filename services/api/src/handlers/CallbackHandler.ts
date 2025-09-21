@@ -676,7 +676,12 @@ export class CallbackHandler {
       
       const listings = await this.listingService.getListingsBySeller(user.id);
       
-      if (listings.length === 0) {
+      // Filter to show only active listings (pending_approval and active)
+      const activeListings = listings.filter(listing => 
+        listing.status === 'pending_approval' || listing.status === 'active'
+      );
+      
+      if (activeListings.length === 0) {
         await ctx.editMessageText('📊 Your Shared Subscriptions', {
           reply_markup: new InlineKeyboard()
             .text('💰 Share Subscription', 'sell_listing')
@@ -685,7 +690,7 @@ export class CallbackHandler {
         });
       } else {
         const keyboard = new InlineKeyboard();
-        for (const listing of listings) {
+        for (const listing of activeListings) {
           const statusEmojiMap: { [key: string]: string } = {
             'pending_approval': '⏳',
             'active': '✅',
