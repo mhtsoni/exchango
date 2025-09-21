@@ -79,7 +79,7 @@ bot.command('start', async (ctx) => {
       `⚙️ /settings - Manage your preferences\n\n` +
       `Ready to start trading? Use /listings to see what's available!`;
     
-    await ctx.reply(welcomeMessage, { parse_mode: 'Markdown' });
+    await ctx.reply(welcomeMessage);
   } catch (error) {
     console.error('Error handling /start command:', error);
     await ctx.reply('Sorry, there was an error processing your request. Please try again later.');
@@ -123,11 +123,57 @@ bot.command('sell', async (ctx) => {
     
     console.log(`/sell command called by user ${userId}`);
     
-    // Check if user has username before starting sell flow
-    const user = await db('users').where('telegram_id', userId).first();
+    // Check if user exists and refresh their data if needed
+    let user = await db('users').where('telegram_id', userId).first();
     if (!user) {
-      await ctx.reply('Please use /start first to create your account.');
-      return;
+      // Auto-create user if they don't exist
+      await ctx.reply('Setting up your account...');
+      
+      // Create user with current Telegram data
+      const username = ctx.from?.username || null;
+      const firstName = ctx.from?.first_name || '';
+      const lastName = ctx.from?.last_name || '';
+      
+      try {
+        await db('users').insert({
+          telegram_id: userId,
+          username: username,
+          first_name: firstName,
+          last_name: lastName,
+          created_at: new Date(),
+          updated_at: new Date()
+        });
+        
+        // Fetch the newly created user
+        user = await db('users').where('telegram_id', userId).first();
+        await ctx.reply('✅ Account created successfully!');
+      } catch (error) {
+        console.error('Error creating user:', error);
+        await ctx.reply('Sorry, there was an error creating your account. Please try again.');
+        return;
+      }
+    } else {
+      // Refresh existing user data
+      const username = ctx.from?.username || null;
+      const firstName = ctx.from?.first_name || '';
+      const lastName = ctx.from?.last_name || '';
+      
+      try {
+        await db('users')
+          .where('telegram_id', userId)
+          .update({
+            username: username,
+            first_name: firstName,
+            last_name: lastName,
+            updated_at: new Date()
+          });
+        
+        // Fetch updated user data
+        user = await db('users').where('telegram_id', userId).first();
+      } catch (error) {
+        console.error('Error updating user:', error);
+        // Continue with existing user data if update fails
+      }
     }
     
     if (!user.username) {
