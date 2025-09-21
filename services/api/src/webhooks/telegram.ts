@@ -432,12 +432,27 @@ bot.on('callback_query:data', async (ctx) => {
     // Handle category selection
     if (data.startsWith('category_')) {
       const category = data.replace('category_', '').replace(/_/g, ' ');
-      const userState = getUserState(userId);
+      let userState = getUserState(userId);
       
-      if (userState) {
-        userState.listingData.category = category;
-        userState.step = 'pricing';
-        setUserState(userId, userState);
+      console.log(`Category selection for user ${userId}, current state:`, userState);
+      
+      // If userState is undefined, initialize it
+      if (!userState) {
+        console.log(`Initializing user state for user ${userId}`);
+        userState = {
+          step: 'category',
+          listingData: {}
+        };
+      }
+      
+      // Ensure listingData exists
+      if (!userState.listingData) {
+        userState.listingData = {};
+      }
+      
+      userState.listingData.category = category;
+      userState.step = 'pricing';
+      setUserState(userId, userState);
         
         const keyboard = new InlineKeyboard()
           .text('$5/month', 'price_500')
@@ -477,6 +492,15 @@ bot.on('callback_query:data', async (ctx) => {
           );
         } else {
           const price = parseInt(data.replace('price_', ''));
+          
+          // Ensure userState and listingData exist
+          if (!userState) {
+            userState = { step: 'pricing', listingData: {} };
+          }
+          if (!userState.listingData) {
+            userState.listingData = {};
+          }
+          
           userState.listingData.price_cents = price;
           userState.step = 'delivery';
           setUserState(userId, userState);
@@ -507,6 +531,12 @@ bot.on('callback_query:data', async (ctx) => {
       const userState = getUserState(userId);
       if (userState) {
         const deliveryType = data.replace('delivery_', '');
+        
+        // Ensure listingData exists
+        if (!userState.listingData) {
+          userState.listingData = {};
+        }
+        
         userState.listingData.delivery_type = deliveryType;
         userState.step = 'details';
         setUserState(userId, userState);
