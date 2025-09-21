@@ -82,7 +82,8 @@ bot.command('start', async (ctx) => {
       reply_markup: new InlineKeyboard()
         .text('📋 Main Menu', 'main_menu')
         .row()
-        .text('❓ Help', 'help_menu')
+        .text('❓ Help', 'help_menu'),
+      reply_to_message_id: ctx.message?.message_id
     });
   } catch (error) {
     console.error('Error handling /start command:', error);
@@ -983,7 +984,11 @@ bot.on('callback_query:data', async (ctx) => {
           `2. Click "Username"\n` +
           `3. Set your username (e.g., @yourname)\n\n` +
           `Once set, come back and try creating a listing again!`,
-          { parse_mode: 'Markdown' }
+          { 
+            parse_mode: 'Markdown',
+            reply_markup: new InlineKeyboard()
+              .text('🏠 Back to Menu', 'main_menu')
+          }
         );
       } else {
         // Start the sell flow
@@ -1005,6 +1010,7 @@ bot.on('callback_query:data', async (ctx) => {
               .text('🏠 Lifestyle', 'category_lifestyle')
               .text('📚 Other', 'category_other').row()
               .text('❌ Cancel', 'cancel_manage')
+              .text('🏠 Back to Menu', 'main_menu')
           }
         );
       }
@@ -1023,7 +1029,12 @@ bot.on('callback_query:data', async (ctx) => {
         .orderBy('created_at', 'desc');
       
       if (listings.length === 0) {
-        await ctx.reply('You haven\'t created any listings yet. Use /sell to create your first one!');
+        await ctx.reply('You haven\'t created any listings yet. Use /sell to create your first one!', {
+          reply_markup: new InlineKeyboard()
+            .text('💰 Create Listing', 'sell_listing')
+            .row()
+            .text('🏠 Back to Menu', 'main_menu')
+        });
       } else {
         let message = '📊 **Your Portfolio**\n\n';
         const statusEmojiMap: { [key: string]: string } = {
@@ -1049,6 +1060,8 @@ bot.on('callback_query:data', async (ctx) => {
           keyboard.text(`${listing.title}`, `manage_${listing.id}`).row();
         }
         
+        keyboard.text('🏠 Back to Menu', 'main_menu');
+        
         await ctx.reply(message, {
           parse_mode: 'Markdown',
           reply_markup: keyboard
@@ -1057,7 +1070,11 @@ bot.on('callback_query:data', async (ctx) => {
     }
     else if (data === 'view_settings') {
       // Show settings
-      await ctx.reply('⚙️ **Settings**\n\nSettings feature coming soon!', { parse_mode: 'Markdown' });
+      await ctx.reply('⚙️ **Settings**\n\nSettings feature coming soon!', { 
+        parse_mode: 'Markdown',
+        reply_markup: new InlineKeyboard()
+          .text('🏠 Back to Menu', 'main_menu')
+      });
     }
     else if (data === 'help_menu') {
       // Show help
@@ -1075,7 +1092,11 @@ bot.on('callback_query:data', async (ctx) => {
         `3. Browse others' listings on our trading channel\n` +
         `4. Manage your listings with /portfolio\n\n` +
         `**Need Help?** Contact support if you have questions!`,
-        { parse_mode: 'Markdown' }
+        { 
+          parse_mode: 'Markdown',
+          reply_markup: new InlineKeyboard()
+            .text('🏠 Back to Menu', 'main_menu')
+        }
       );
     }
     
@@ -1139,10 +1160,14 @@ bot.on('message', async (ctx) => {
       
       // Default message with menu for users not in a form flow
       await ctx.reply(
-        'Hi! I\'m the Exchango trading bot. Choose an option below or use /help for commands.',
+        'Hi! I\'m the Exchango trading bot. Choose an option below:',
         {
           reply_markup: new InlineKeyboard()
             .text('📋 Main Menu', 'main_menu')
+            .text('💰 Sell', 'sell_listing')
+            .row()
+            .text('📊 Portfolio', 'view_portfolio')
+            .text('⚙️ Settings', 'view_settings')
             .row()
             .text('❓ Help', 'help_menu')
         }
@@ -1549,7 +1574,9 @@ async function showMainMenu(ctx: any, userId: number) {
       .text('📊 My Portfolio', 'view_portfolio')
       .row()
       .text('⚙️ Settings', 'view_settings')
-      .text('❓ Help', 'help_menu');
+      .text('❓ Help', 'help_menu')
+      .row()
+      .text('🏠 Home', 'main_menu');
     
     await ctx.reply(menuMessage, {
       reply_markup: keyboard,
