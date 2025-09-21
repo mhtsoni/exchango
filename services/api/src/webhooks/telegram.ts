@@ -52,12 +52,23 @@ bot.command('start', async (ctx) => {
         kyc_status: 'none',
         rating: 0
       });
+    } else {
+      // Update existing user's username if it has changed
+      if (existingUser.username !== username) {
+        await db('users').where('telegram_id', userId).update({
+          username: username || null,
+          display_name: displayName || existingUser.display_name,
+          updated_at: new Date()
+        });
+      }
     }
     
     let welcomeMessage = `🎉 Welcome to Exchango, ${displayName || username || 'trader'}!\n\n`;
     
-    if (!username) {
-      welcomeMessage += `💡 **Tip:** Set a Telegram username (@username) in your profile to make it easier for buyers to contact you directly!\n\n`;
+    if (username) {
+      welcomeMessage += `✅ **Username:** @${username} - Buyers can contact you directly!\n\n`;
+    } else {
+      welcomeMessage += `💡 **Tip:** Set a Telegram username in your profile for direct buyer contact.\n\n`;
     }
     
     welcomeMessage += `I'm your personal trading assistant. Here's what you can do:\n\n` +
@@ -256,6 +267,39 @@ bot.command('settings', async (ctx) => {
   }
 });
 
+bot.command('update', async (ctx) => {
+  try {
+    const userId = ctx.from?.id;
+    const username = ctx.from?.username;
+    const displayName = ctx.from?.first_name + (ctx.from?.last_name ? ` ${ctx.from.last_name}` : '');
+    
+    const user = await db('users').where('telegram_id', userId).first();
+    if (!user) {
+      await ctx.reply('Please use /start first to create your account.');
+      return;
+    }
+    
+    // Update user profile in database
+    await db('users').where('telegram_id', userId).update({
+      username: username || null,
+      display_name: displayName || null,
+      updated_at: new Date()
+    });
+    
+    await ctx.reply(
+      `✅ **Profile Updated!**\n\n` +
+      `👤 **Username:** ${username ? `@${username}` : 'Not set'}\n` +
+      `👤 **Name:** ${displayName}\n\n` +
+      `Your profile information has been refreshed automatically.`,
+      { parse_mode: 'Markdown' }
+    );
+    
+  } catch (error) {
+    console.error('Error handling /update command:', error);
+    await ctx.reply('Sorry, there was an error updating your profile. Please try again later.');
+  }
+});
+
 bot.command('help', async (ctx) => {
   await ctx.reply(
     `🤖 **Exchango Bot Help**\n\n` +
@@ -265,6 +309,7 @@ bot.command('help', async (ctx) => {
     `/sell - Create a new listing\n` +
     `/portfolio - View your trading history\n` +
     `/settings - Manage your preferences\n` +
+    `/update - Refresh your profile information\n` +
     `/help - Show this help message\n\n` +
     `**Getting Started:**\n` +
     `1. Use /start to begin\n` +
@@ -793,6 +838,34 @@ bot.on('callback_query:data', async (ctx) => {
         'Listing editing cancelled. Use /portfolio to manage your listings again.',
         { parse_mode: 'Markdown' }
       );
+    }
+    
+    // Handle refresh profile action
+    else if (data === 'refresh_profile') {
+      const userId = ctx.from?.id;
+      const username = ctx.from?.username;
+      const displayName = ctx.from?.first_name + (ctx.from?.last_name ? ` ${ctx.from.last_name}` : '');
+      
+      try {
+        // Update user profile in database
+        await db('users').where('telegram_id', userId).update({
+          username: username || null,
+          display_name: displayName || null,
+          updated_at: new Date()
+        });
+        
+        await ctx.editMessageText(
+          `✅ **Profile Updated!**\n\n` +
+          `👤 **Username:** ${username ? `@${username}` : 'Not set'}\n` +
+          `👤 **Name:** ${displayName}\n\n` +
+          `Your profile information has been refreshed.`,
+          { parse_mode: 'Markdown' }
+        );
+        
+      } catch (error) {
+        console.error('Error refreshing profile:', error);
+        await ctx.answerCallbackQuery('❌ Error updating profile. Please try again.');
+      }
     }
     
     // Handle cancel manage action
