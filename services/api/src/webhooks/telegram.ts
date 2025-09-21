@@ -325,7 +325,7 @@ bot.command('settings', async (ctx) => {
       `⚙️ **Your Settings**\n\n` +
       `👤 **Profile:**\n` +
       `Name: ${user.display_name || 'Not set'}\n` +
-      `Username: ${user.username || 'Not set'}\n` +
+      `Username: ${user.username ? `@${user.username.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}` : 'Not set'}\n` +
       `Telegram ID: ${user.telegram_id}\n\n` +
       `📊 **Account Status:**\n` +
       `KYC Status: ${user.kyc_status}\n` +
@@ -1562,7 +1562,8 @@ async function showMainMenu(ctx: any, userId: number) {
     let menuMessage = `🎯 **Exchango Main Menu**\n\n`;
     
     if (username) {
-      menuMessage += `👋 Welcome back, @${username}!\n\n`;
+      // Escape the @ symbol for Markdown
+      menuMessage += `👋 Welcome back, @${username.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}!\n\n`;
     } else {
       menuMessage += `👋 Welcome! You need a username to create listings.\n\n`;
     }
