@@ -555,8 +555,35 @@ export class CallbackHandler {
   }
 
   private async handleMainMenu(ctx: any, userId: number): Promise<void> {
-    // This will be handled by the main menu service
-    await ctx.reply('Main menu functionality will be implemented here');
+    try {
+      const user = await UserService.getUserByTelegramId(userId);
+      const username = user?.username;
+      
+      let menuMessage = `🎯 **SubShare Main Menu**\n\n`;
+      
+      if (username) {
+        // Escape the @ symbol for Markdown
+        menuMessage += `👋 Welcome back, @${username.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}!\n\n`;
+      } else {
+        menuMessage += `👋 Welcome! You need a username to share subscriptions.\n\n`;
+      }
+      
+      menuMessage += `**Choose what you'd like to do:**`;
+      
+      const keyboard = new InlineKeyboard()
+        .text('💰 Share Subscription', 'sell_listing')
+        .text('📊 My Shares', 'view_portfolio').row()
+        .text('⚙️ Settings', 'view_settings')
+        .text('❓ Help', 'help_menu');
+      
+      await ctx.editMessageText(menuMessage, {
+        reply_markup: keyboard,
+        parse_mode: 'Markdown'
+      });
+    } catch (error) {
+      console.error('Error showing main menu:', error);
+      await ctx.editMessageText('Sorry, there was an error showing the menu. Please try again.');
+    }
   }
 
   private async handleSellListing(ctx: any, userId: number): Promise<void> {
