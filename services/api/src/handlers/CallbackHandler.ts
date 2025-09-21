@@ -592,17 +592,24 @@ export class CallbackHandler {
     try {
       const user = await UserService.getUserByTelegramId(userId);
       const username = user?.username;
+      const displayName = user?.display_name || 'friend';
       
-      let menuMessage = `🎯 **SubShare Main Menu**\n\n`;
+      let menuMessage = `🎉 Welcome to **SubShare**, ${displayName}!\n\n`;
       
-      if (username) {
-        // Escape the @ symbol for Markdown
-        menuMessage += `👋 Welcome back, @${username.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}!\n\n`;
-      } else {
-        menuMessage += `👋 Welcome! You need a username to share subscriptions.\n\n`;
+      menuMessage += `**The smart way to share subscriptions & save money** 💰\n\n`;
+      
+      menuMessage += `**What is SubShare?**\n` +
+        `• Share your Netflix, Spotify, Bumble, etc. subscriptions\n` +
+        `• Sell concert tickets, event passes you can't use\n` +
+        `• Buy shared access at a fraction of full price\n` +
+        `• Safe, verified, and easy to use\n\n`;
+      
+      if (!username) {
+        menuMessage += `⚠️ **Quick setup needed:** Set your Telegram username so buyers can contact you!\n` +
+          `Go to Telegram Settings → Username to set one.\n\n`;
       }
       
-      menuMessage += `**Choose what you'd like to do:**`;
+      menuMessage += `💡 **Browse available shares on our channel!**`;
       
       const keyboard = new InlineKeyboard()
         .text('💰 Share Subscription', 'sell_listing')
